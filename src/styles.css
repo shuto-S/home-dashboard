@@ -119,24 +119,30 @@ button { font: inherit; cursor: pointer; }
 
 .hourly-track {
   display: flex;
-  gap: 6px;
+  gap: 0;
 }
 
 .hour-card {
-  flex: 0 0 calc((100% - 42px) / 8);
+  flex: 0 0 calc(100% / 8);
   min-width: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 20px 8px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.03);
-  transition: background 0.15s;
+  padding: 16px 8px;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.hour-card:last-child {
+  border-right: none;
 }
 
 .hour-card:first-child {
-  background: rgba(0, 0, 0, 0.08);
+  font-weight: 800;
+}
+
+.hour-card:first-child .hc-time {
+  color: #111111;
 }
 
 .hc-time {
@@ -286,7 +292,7 @@ button { font: inherit; cursor: pointer; }
   }
 
   .hour-card {
-    flex: 0 0 calc((100% - 30px) / 6);
+    flex: 0 0 calc(100% / 6);
     min-width: 64px;
   }
 }
@@ -303,9 +309,9 @@ button { font: inherit; cursor: pointer; }
   }
 
   .hour-card {
-    flex: 0 0 calc((100% - 20px) / 5);
+    flex: 0 0 calc(100% / 5);
     min-width: 56px;
-    padding: 14px 4px;
+    padding: 12px 4px;
     gap: 8px;
   }
 
