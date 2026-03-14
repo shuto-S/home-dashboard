@@ -105,57 +105,57 @@ const config = {
   latitude: parseFloat(import.meta.env.VITE_LATITUDE ?? '35.6764'),
   longitude: parseFloat(import.meta.env.VITE_LONGITUDE ?? '139.6500'),
   timezone: import.meta.env.VITE_TIMEZONE ?? 'Asia/Tokyo',
-  locationLabel: import.meta.env.VITE_LOCATION_LABEL ?? '自宅',
+  locationLabel: import.meta.env.VITE_LOCATION_LABEL ?? 'Home',
   calendarId: import.meta.env.VITE_CALENDAR_ID ?? '',
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 };
 
 const weatherCodeLabelMap: Record<WeatherCode, string> = {
-  0: '快晴',
-  1: '晴れ',
-  2: '薄曇り',
-  3: '曇り',
-  45: '霧',
-  48: '霧氷',
-  51: '小雨',
-  53: '雨',
-  55: '強い雨',
-  61: '小雨',
-  63: '雨',
-  65: '強い雨',
-  71: '小雪',
-  73: '雪',
-  75: '大雪',
-  80: 'にわか雨',
-  81: '雨',
-  82: '激しい雨',
-  95: '雷雨',
-  96: '雷雨と雹',
-  99: '激しい雷雨'
+  0: 'Clear Sky',
+  1: 'Mostly Clear',
+  2: 'Partly Cloudy',
+  3: 'Overcast',
+  45: 'Fog',
+  48: 'Rime Fog',
+  51: 'Light Drizzle',
+  53: 'Drizzle',
+  55: 'Heavy Drizzle',
+  61: 'Light Rain',
+  63: 'Rain',
+  65: 'Heavy Rain',
+  71: 'Light Snow',
+  73: 'Snow',
+  75: 'Heavy Snow',
+  80: 'Showers',
+  81: 'Rain',
+  82: 'Violent Rain',
+  95: 'Thunderstorm',
+  96: 'Thunderstorm w/ Hail',
+  99: 'Severe Thunderstorm'
 };
 
-const weatherCodeSymbolMap: Record<WeatherCode, string> = {
-  0: '○',
-  1: '◐',
-  2: '◑',
-  3: '●',
-  45: '〰',
-  48: '〰',
-  51: '﹒',
-  53: '︙',
-  55: '⋮',
-  61: '﹒',
-  63: '︙',
-  65: '⋮',
-  71: '✳',
-  73: '✳',
-  75: '✳',
-  80: '﹒',
-  81: '︙',
-  82: '⋮',
-  95: '⚡',
-  96: '⚡',
-  99: '⚡'
+const weatherCodeIconMap: Record<WeatherCode, string> = {
+  0: 'clear_day',
+  1: 'partly_cloudy_day',
+  2: 'cloud',
+  3: 'cloud',
+  45: 'foggy',
+  48: 'foggy',
+  51: 'rainy_light',
+  53: 'rainy',
+  55: 'rainy_heavy',
+  61: 'rainy_light',
+  63: 'rainy',
+  65: 'rainy_heavy',
+  71: 'weather_snowy',
+  73: 'weather_snowy',
+  75: 'snowing_heavy',
+  80: 'rainy_light',
+  81: 'rainy',
+  82: 'rainy_heavy',
+  95: 'thunderstorm',
+  96: 'thunderstorm',
+  99: 'thunderstorm'
 };
 
 const appRoot = document.querySelector<HTMLDivElement>('#app');
@@ -169,8 +169,8 @@ const app = appRoot;
 const state: DashboardState = {
   weather: readSnapshot<WeatherSnapshot>(WEATHER_STORAGE_KEY),
   calendar: readSnapshot<CalendarSnapshot>(CALENDAR_STORAGE_KEY),
-  weatherStatus: '天気を取得中',
-  calendarStatus: config.calendarId && config.googleClientId ? 'カレンダー未接続' : 'カレンダー設定待ち',
+  weatherStatus: 'Loading weather',
+  calendarStatus: config.calendarId && config.googleClientId ? 'Calendar not connected' : 'Calendar not configured',
   isCalendarConfigured: Boolean(config.calendarId && config.googleClientId),
   isCalendarAuthorized: false,
   isOffline: !window.navigator.onLine,
@@ -235,7 +235,7 @@ function setupCalendar() {
 
   const oauth2 = window.google?.accounts?.oauth2;
   if (!oauth2) {
-    state.calendarStatus = 'Google 認証ライブラリの読み込み待ち';
+    state.calendarStatus = 'Waiting for Google auth library';
     render();
     window.setTimeout(setupCalendar, 500);
     return;
@@ -246,7 +246,7 @@ function setupCalendar() {
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
     callback: (response) => {
       if (response.error) {
-        state.calendarStatus = 'カレンダー認証に失敗しました';
+        state.calendarStatus = 'Calendar auth failed';
         state.lastError = response.error;
         render();
         return;
@@ -254,7 +254,7 @@ function setupCalendar() {
 
       accessToken = response.access_token;
       state.isCalendarAuthorized = true;
-      state.calendarStatus = 'カレンダーを同期中';
+      state.calendarStatus = 'Syncing calendar';
       render();
       void refreshCalendar();
     }
@@ -264,7 +264,7 @@ function setupCalendar() {
 }
 
 async function refreshWeather() {
-  state.weatherStatus = '天気を更新中';
+  state.weatherStatus = 'Updating weather';
   render();
 
   try {
@@ -285,11 +285,11 @@ async function refreshWeather() {
     const payload = (await response.json()) as OpenMeteoResponse;
     const snapshot = toWeatherSnapshot(payload);
     state.weather = snapshot;
-    state.weatherStatus = `更新 ${formatShortTime(snapshot.updatedAt)}`;
+    state.weatherStatus = `Updated ${formatShortTime(snapshot.updatedAt)}`;
     state.lastError = null;
     writeSnapshot(WEATHER_STORAGE_KEY, snapshot);
   } catch (error) {
-    state.weatherStatus = state.weather ? `通信失敗 最終更新 ${formatShortTime(state.weather.updatedAt)}` : '天気を取得できません';
+    state.weatherStatus = state.weather ? `Offline — last updated ${formatShortTime(state.weather.updatedAt)}` : 'Unable to fetch weather';
     state.lastError = error instanceof Error ? error.message : 'unknown-weather-error';
   }
 
@@ -305,7 +305,7 @@ async function refreshCalendarInternal(allowReauth: boolean) {
     return;
   }
 
-  state.calendarStatus = '予定を更新中';
+  state.calendarStatus = 'Updating events';
   render();
 
   try {
@@ -333,7 +333,7 @@ async function refreshCalendarInternal(allowReauth: boolean) {
 
     if (response.status === 401 && tokenClient) {
       state.isCalendarAuthorized = false;
-      state.calendarStatus = '認証の有効期限が切れました';
+      state.calendarStatus = 'Auth token expired';
       render();
       return;
     }
@@ -349,11 +349,11 @@ async function refreshCalendarInternal(allowReauth: boolean) {
     };
 
     state.calendar = snapshot;
-    state.calendarStatus = `更新 ${formatShortTime(snapshot.updatedAt)}`;
+    state.calendarStatus = `Updated ${formatShortTime(snapshot.updatedAt)}`;
     state.lastError = null;
     writeSnapshot(CALENDAR_STORAGE_KEY, snapshot);
   } catch (error) {
-    state.calendarStatus = state.calendar ? `通信失敗 最終更新 ${formatShortTime(state.calendar.updatedAt)}` : '予定を取得できません';
+    state.calendarStatus = state.calendar ? `Offline — last updated ${formatShortTime(state.calendar.updatedAt)}` : 'Unable to fetch events';
     state.lastError = error instanceof Error ? error.message : 'unknown-calendar-error';
   }
 
@@ -361,67 +361,27 @@ async function refreshCalendarInternal(allowReauth: boolean) {
 }
 
 function render() {
+  const now = new Date();
+
   app.innerHTML = `
     <main class="dashboard">
-      <section class="hero-panel panel">
+      <section class="hero">
         <div>
-          <p class="eyebrow">${formatDate(new Date())}</p>
-          <p class="hero-date">${formatYear(new Date())}</p>
-          <h1 class="clock">${formatClock(new Date())}</h1>
-          <p class="hero-meta">${config.locationLabel} / ${state.isOffline ? 'オフライン' : 'オンライン'}</p>
+          <p class="date">${formatDate(now)}</p>
+          <h1 class="clock">${formatClock(now)}</h1>
         </div>
-        <div class="today-weather">
-          <p class="eyebrow">今日の天気</p>
-          ${renderTodayWeather()}
-          <p class="status">${state.weatherStatus}</p>
-        </div>
+        ${renderTodayWeather()}
       </section>
 
-      <section class="grid">
-        <article class="panel hourly-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Hourly Forecast</p>
-              <h2>時間ごとの天気</h2>
-              <p class="panel-note">今から先 12 時間</p>
-            </div>
-            <div class="panel-actions">
-              <p class="status">${state.weather ? `${config.locationLabel} ${config.latitude.toFixed(2)}, ${config.longitude.toFixed(2)}` : '取得待ち'}</p>
-              <button class="action-button" data-action="refresh-weather">天気更新</button>
-            </div>
-          </div>
-          <div class="hourly-list">
-            ${renderHourlyRows()}
-          </div>
-        </article>
-
-        <article class="panel calendar-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Family Calendar</p>
-              <h2>家族カレンダー</h2>
-              <p class="panel-note">今日から 7 日分</p>
-            </div>
-            ${renderCalendarAction()}
-          </div>
-          <div class="calendar-list">
-            ${renderCalendarRows()}
-          </div>
-          <p class="status">${state.calendarStatus}</p>
-        </article>
+      <section class="hourly">
+        ${renderHourlyCards()}
       </section>
 
-      <footer class="footer-bar">
-        <span>自動更新: 天気 ${Math.floor(WEATHER_POLL_MS / 60000)}分 / カレンダー ${Math.floor(CALENDAR_POLL_MS / 60000)}分</span>
-        <span>${state.isOffline ? 'オフライン: 保存済みデータを表示中' : state.lastError ? `状態 ${escapeHtml(state.lastError)}` : 'オンライン待機中'}</span>
-      </footer>
+      <section class="calendar">
+        ${renderCalendarContent()}
+      </section>
     </main>
   `;
-
-  const weatherButton = app.querySelector<HTMLButtonElement>('[data-action="refresh-weather"]');
-  weatherButton?.addEventListener('click', () => {
-    void refreshWeather();
-  });
 
   const connectButton = app.querySelector<HTMLButtonElement>('[data-action="connect-calendar"]');
   connectButton?.addEventListener('click', () => {
@@ -436,107 +396,89 @@ function render() {
 
 function renderTodayWeather() {
   if (!state.weather) {
-    return '<p class="weather-summary">読み込み中</p>';
+    return '<div class="hero-weather"><p class="weather-loading">—</p></div>';
   }
 
-  const symbol = weatherCodeSymbolMap[state.weather.currentCode];
+  const icon = weatherCodeIconMap[state.weather.currentCode];
   const label = weatherCodeLabelMap[state.weather.currentCode];
 
   return `
-    <div class="weather-summary">
-      <span class="weather-symbol">${symbol}</span>
-      <div>
-        <p class="temp-now">${Math.round(state.weather.currentTemp)}°</p>
-        <p>${label} / H ${Math.round(state.weather.maxTemp)}° / L ${Math.round(state.weather.minTemp)}°</p>
+    <div class="hero-weather">
+      <div class="weather-main">
+        <span class="weather-icon material-symbols-outlined">${icon}</span>
+        <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
+      <p class="weather-detail">${label} / ${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}°</p>
     </div>
   `;
 }
 
-function renderHourlyRows() {
+function renderHourlyCards() {
   if (!state.weather) {
-    return '<p class="empty-state">天気データを取得中です。</p>';
+    return '<p class="hourly-empty">—</p>';
   }
 
-  return state.weather.hourly
+  const cards = state.weather.hourly
     .map(
       (entry) => `
-        <div class="hour-row">
-          <span class="hour-time">${formatHour(entry.time)}</span>
-          <span class="hour-symbol">${weatherCodeSymbolMap[entry.weatherCode]}</span>
-          <span class="hour-temp">${Math.round(entry.temperature)}°</span>
-          <span class="hour-rain">降水 ${Math.round(entry.precipitationProbability)}%</span>
-          <span class="hour-label">${weatherCodeLabelMap[entry.weatherCode]}</span>
+        <div class="hour-card">
+          <span class="hc-time">${formatHour(entry.time)}</span>
+          <span class="hc-icon material-symbols-outlined">${weatherCodeIconMap[entry.weatherCode]}</span>
+          <span class="hc-temp">${Math.round(entry.temperature)}°</span>
+          <span class="hc-precip">${Math.round(entry.precipitationProbability)}%</span>
         </div>
       `
     )
     .join('');
+
+  return `<div class="hourly-track">${cards}</div>`;
 }
 
-function renderCalendarAction() {
+function renderCalendarContent() {
   if (!state.isCalendarConfigured) {
-    return '<p class="status">.env の設定が必要です</p>';
+    return '<p class="cal-empty">Calendar not configured</p>';
   }
 
   if (!state.isCalendarAuthorized) {
-    return '<button class="action-button" data-action="connect-calendar">Google 連携</button>';
+    return `
+      <div class="calendar-head">
+        <button class="cal-btn" data-action="connect-calendar">Connect Google Calendar</button>
+      </div>
+    `;
   }
 
-  return `
-    <div class="panel-actions">
-      <p class="status">${state.calendar ? `${state.calendar.events.length} 件` : '取得待ち'}</p>
-      <button class="action-button" data-action="refresh-calendar">今すぐ更新</button>
+  const header = `
+    <div class="calendar-head">
+      <button class="cal-btn" data-action="refresh-calendar">Refresh</button>
     </div>
   `;
-}
-
-function renderCalendarRows() {
-  if (!state.isCalendarConfigured) {
-    return `
-      <div class="empty-state">
-        <p>Google カレンダー ID と OAuth クライアント ID を設定すると予定を表示します。</p>
-      </div>
-    `;
-  }
-
-  if (!state.isCalendarAuthorized) {
-    return `
-      <div class="empty-state">
-        <p>初回のみ Google 連携が必要です。</p>
-        <p>読み取り専用で家族カレンダーを表示します。</p>
-      </div>
-    `;
-  }
 
   if (!state.calendar || state.calendar.events.length === 0) {
-    return '<p class="empty-state">直近 7 日に予定はありません。</p>';
+    return `${header}<p class="cal-empty">No upcoming events</p>`;
   }
 
-  return groupCalendarEvents(state.calendar.events)
+  const groups = groupCalendarEvents(state.calendar.events)
     .map(
       (group) => `
-        <section class="calendar-group">
-          <p class="calendar-group-label">${group.label}</p>
+        <div class="cal-group">
+          <p class="cal-group-label">${group.label}</p>
           ${group.events
             .map(
               (event) => `
-                <div class="calendar-row">
-                  <div>
-                    <p class="calendar-date">${formatCalendarDate(event.startDate)}</p>
-                    <p class="calendar-time">${event.isAllDay ? '終日' : `${event.startLabel} - ${event.endLabel}`}</p>
-                  </div>
-                  <div class="calendar-copy">
-                    <p class="calendar-summary">${escapeHtml(event.summary)}</p>
-                    <p class="calendar-badge">${describeCalendarEvent(event)}</p>
-                  </div>
+                <div class="cal-event">
+                  <span class="cal-event-time">${event.isAllDay ? 'All Day' : event.startLabel}</span>
+                  <span class="cal-event-summary">${escapeHtml(event.summary)}</span>
+                  <span class="cal-event-badge">${describeCalendarEvent(event)}</span>
                 </div>
               `
             )
             .join('')}
-        </section>
+        </div>
       `
     )
     .join('');
+
+  return `${header}<div class="calendar-body">${groups}</div>`;
 }
 
 function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
@@ -570,9 +512,9 @@ function toCalendarEvent(item: GoogleCalendarEvent): CalendarEvent {
 
   return {
     id: item.id,
-    summary: item.summary || 'タイトル未設定',
-    startLabel: allDay ? '終日' : formatShortTime(startDate),
-    endLabel: allDay ? '終日' : formatShortTime(endDate),
+    summary: item.summary || 'Untitled',
+    startLabel: allDay ? 'All Day' : formatShortTime(startDate),
+    endLabel: allDay ? 'All Day' : formatShortTime(endDate),
     startDate,
     endDate,
     isAllDay: allDay
@@ -619,45 +561,33 @@ function writeSnapshot<T>(key: string, snapshot: T) {
 }
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
     month: 'long',
-    day: 'numeric',
-    weekday: 'long'
-  }).format(date);
-}
-
-function formatYear(date: Date) {
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric'
+    day: 'numeric'
   }).format(date);
 }
 
 function formatClock(date: Date) {
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    hour12: false
   }).format(date);
 }
 
 function formatShortTime(value: string) {
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   }).format(new Date(value));
 }
 
 function formatHour(value: string) {
-  return new Intl.DateTimeFormat('ja-JP', {
-    hour: '2-digit'
-  }).format(new Date(value));
-}
-
-function formatCalendarDate(value: string) {
-  return new Intl.DateTimeFormat('ja-JP', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short'
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    hour12: false
   }).format(new Date(value));
 }
 
@@ -668,23 +598,23 @@ function formatCalendarGroupLabel(value: string) {
   tomorrow.setDate(today.getDate() + 1);
 
   if (date.toDateString() === today.toDateString()) {
-    return '今日';
+    return 'Today';
   }
 
   if (date.toDateString() === tomorrow.toDateString()) {
-    return '明日';
+    return 'Tomorrow';
   }
 
-  return new Intl.DateTimeFormat('ja-JP', {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
     month: 'long',
-    day: 'numeric',
-    weekday: 'long'
+    day: 'numeric'
   }).format(date);
 }
 
 function describeCalendarEvent(event: CalendarEvent) {
   if (event.isAllDay) {
-    return '終日';
+    return 'All Day';
   }
 
   const now = Date.now();
@@ -692,20 +622,20 @@ function describeCalendarEvent(event: CalendarEvent) {
   const end = new Date(event.endDate).getTime();
 
   if (start <= now && now <= end) {
-    return '進行中';
+    return 'Now';
   }
 
   const deltaMinutes = Math.round((start - now) / (60 * 1000));
   if (deltaMinutes >= 0 && deltaMinutes < 60) {
-    return `${deltaMinutes}分後`;
+    return `in ${deltaMinutes}m`;
   }
 
   const deltaHours = Math.round(deltaMinutes / 60);
   if (deltaHours >= 0 && deltaHours <= 6) {
-    return `${deltaHours}時間後`;
+    return `in ${deltaHours}h`;
   }
 
-  return '予定';
+  return '';
 }
 
 function toWeatherCode(value: number): WeatherCode {

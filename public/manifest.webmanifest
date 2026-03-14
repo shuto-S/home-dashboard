@@ -3,10 +3,10 @@
   "short_name": "Dashboard",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f3f3f0",
-  "theme_color": "#f3f3f0",
-  "lang": "ja",
-  "description": "家族カレンダーと天気を 1 画面に表示する家庭向けダッシュボード",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "en",
+  "description": "A single-screen family dashboard showing calendar and weather",
   "icons": [
     {
       "src": "/icon-192.svg",
