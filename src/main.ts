@@ -98,6 +98,7 @@ type TokenClientConfig = {
 
 const WEATHER_STORAGE_KEY = 'home-dashboard.weather';
 const CALENDAR_STORAGE_KEY = 'home-dashboard.calendar';
+const TOKEN_STORAGE_KEY = 'home-dashboard.token';
 const WEATHER_POLL_MS = 15 * 60 * 1000;
 const CALENDAR_POLL_MS = 10 * 60 * 1000;
 
@@ -180,12 +181,24 @@ const state: DashboardState = {
 let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 
+// Restore saved token
+const savedToken = readSnapshot<{ token: string; expiresAt: number }>(TOKEN_STORAGE_KEY);
+if (savedToken && savedToken.expiresAt > Date.now()) {
+  accessToken = savedToken.token;
+  state.isCalendarAuthorized = true;
+  state.calendarStatus = 'Syncing calendar';
+}
+
 render();
 startClock();
 setupConnectivityWatcher();
 registerServiceWorker();
 void refreshWeather();
 setupCalendar();
+
+if (state.isCalendarAuthorized) {
+  void refreshCalendar();
+}
 
 window.setInterval(() => {
   void refreshWeather();
@@ -253,6 +266,7 @@ function setupCalendar() {
       }
 
       accessToken = response.access_token;
+      saveToken(response.access_token, response.expires_in);
       state.isCalendarAuthorized = true;
       state.calendarStatus = 'Syncing calendar';
       render();
@@ -327,11 +341,13 @@ async function refreshCalendarInternal(allowReauth: boolean) {
     });
 
     if (response.status === 401 && tokenClient && allowReauth) {
+      clearToken();
       tokenClient.requestAccessToken({ prompt: '' });
       return;
     }
 
     if (response.status === 401 && tokenClient) {
+      clearToken();
       state.isCalendarAuthorized = false;
       state.calendarStatus = 'Auth token expired';
       render();
@@ -409,6 +425,7 @@ function renderTodayWeather() {
         <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
       <p class="weather-detail">${label} / ${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}°</p>
+      <p class="weather-location">${escapeHtml(config.locationLabel)}</p>
     </div>
   `;
 }
@@ -465,8 +482,8 @@ function renderCalendarContent() {
           ${group.events
             .map(
               (event) => `
-                <div class="cal-event">
-                  <span class="cal-event-time">${event.isAllDay ? 'All Day' : event.startLabel}</span>
+                <div class="cal-event${event.isAllDay ? ' cal-event--allday' : ''}">
+                  <span class="cal-event-time">${event.isAllDay ? 'All Day' : `${event.startLabel} – ${event.endLabel}`}</span>
                   <span class="cal-event-summary">${escapeHtml(event.summary)}</span>
                   <span class="cal-event-badge">${describeCalendarEvent(event)}</span>
                 </div>
@@ -543,7 +560,11 @@ function groupCalendarEvents(events: CalendarEvent[]): CalendarGroup[] {
 
   return Array.from(grouped.entries()).map(([key, groupedEvents]) => ({
     label: formatCalendarGroupLabel(key),
-    events: groupedEvents
+    events: groupedEvents.sort((a, b) => {
+      if (a.isAllDay && !b.isAllDay) return -1;
+      if (!a.isAllDay && b.isAllDay) return 1;
+      return 0;
+    })
   }));
 }
 
@@ -558,6 +579,18 @@ function readSnapshot<T>(key: string): T | null {
 
 function writeSnapshot<T>(key: string, snapshot: T) {
   window.localStorage.setItem(key, JSON.stringify(snapshot));
+}
+
+function saveToken(token: string, expiresIn: number) {
+  writeSnapshot(TOKEN_STORAGE_KEY, {
+    token,
+    expiresAt: Date.now() + expiresIn * 1000
+  });
+}
+
+function clearToken() {
+  accessToken = null;
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 function formatDate(date: Date) {
