@@ -1,15 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,600,0,0&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&display=swap');
 
 :root {
   color-scheme: light;
-  font-family: 'DM Sans', 'Hiragino Sans', system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Helvetica Neue', 'Hiragino Sans', sans-serif;
   background: #ffffff;
   color: #111111;
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
-  -webkit-font-smoothing: antialiased;
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -27,7 +24,7 @@ button { font: inherit; cursor: pointer; }
   padding: 48px 40px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 32px;
 }
 
 .hero {
@@ -35,24 +32,25 @@ button { font: inherit; cursor: pointer; }
   justify-content: space-between;
   align-items: flex-end;
   gap: 24px;
-  padding-bottom: 40px;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 32px;
+  border-bottom: 2px solid #bbb;
 }
 
 .date {
-  font-family: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
-  font-size: clamp(1.1rem, 3vw, 1.5rem);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: rgba(17, 17, 17, 0.45);
-  margin-bottom: 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #444;
+  margin-bottom: 6px;
 }
 
 .clock {
-  font-family: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
-  font-size: clamp(4rem, 12vw, 8rem);
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(3.6rem, 10vw, 6.5rem);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   line-height: 0.9;
 }
 
@@ -69,17 +67,17 @@ button { font: inherit; cursor: pointer; }
 }
 
 .weather-icon {
-  font-size: 2.8rem;
+  font-size: 2.6rem;
   line-height: 1;
   color: #111111;
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+#weather-display {
+  display: contents;
 }
 
 .current-temp {
-  font-size: 3.4rem;
+  font-size: 3.8rem;
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -87,53 +85,49 @@ button { font: inherit; cursor: pointer; }
 
 .weather-detail {
   margin-top: 10px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: rgba(17, 17, 17, 0.5);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #444;
   letter-spacing: 0.02em;
 }
 
 .weather-location {
   margin-top: 4px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: rgba(17, 17, 17, 0.3);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #666;
   letter-spacing: 0.04em;
 }
 
 .weather-loading {
   font-size: 0.85rem;
-  color: rgba(17, 17, 17, 0.4);
+  color: #555;
 }
 
 .hourly {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
   margin: 0 -40px;
   padding: 0 40px;
 }
 
-.hourly::-webkit-scrollbar { display: none; }
-
 .hourly-track {
   display: flex;
+  flex-wrap: wrap;
   gap: 0;
 }
 
 .hour-card {
-  flex: 0 0 calc(100% / 8);
-  min-width: 72px;
+  flex: 0 0 calc(100% / 6);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 16px 8px;
-  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 8px;
+  padding: 18px 10px;
+  border-right: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
 }
 
-.hour-card:last-child {
+.hour-card:nth-child(6n) {
   border-right: none;
 }
 
@@ -146,34 +140,34 @@ button { font: inherit; cursor: pointer; }
 }
 
 .hc-time {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: rgba(17, 17, 17, 0.5);
+  color: #444;
 }
 
 .hc-icon {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   line-height: 1;
   color: #111111;
 }
 
 .hc-temp {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .hc-precip {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: rgba(17, 17, 17, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #666;
 }
 
 .hourly-empty {
   padding: 24px 0;
   font-size: 0.85rem;
-  color: rgba(17, 17, 17, 0.4);
+  color: #555;
 }
 
 .calendar {
@@ -187,23 +181,18 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .cal-btn {
   border: none;
   background: transparent;
-  color: rgba(17, 17, 17, 0.25);
+  color: #444;
   border-radius: 999px;
   padding: 4px 12px;
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
-  transition: color 0.15s;
-}
-
-.cal-btn:hover {
-  color: rgba(17, 17, 17, 0.6);
 }
 
 .calendar-body {
@@ -211,17 +200,17 @@ button { font: inherit; cursor: pointer; }
 }
 
 .cal-group + .cal-group {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 .cal-group-label {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(17, 17, 17, 0.45);
-  padding-bottom: 12px;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  color: #333;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #bbb;
 }
 
 .cal-event {
@@ -229,62 +218,63 @@ button { font: inherit; cursor: pointer; }
   align-items: baseline;
   gap: 16px;
   padding: 14px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #ddd;
 }
 
 .cal-event-time {
   flex: 0 0 auto;
-  min-width: 56px;
-  font-size: 0.82rem;
+  min-width: 60px;
+  font-size: 0.92rem;
   font-weight: 700;
-  color: rgba(17, 17, 17, 0.55);
+  color: #333;
   white-space: nowrap;
 }
 
 .cal-event--allday .cal-event-time {
   font-weight: 800;
   text-transform: uppercase;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   letter-spacing: 0.04em;
 }
 
 .cal-event-summary {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   font-weight: 600;
 }
 
 .cal-event-badge {
   flex-shrink: 0;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: rgba(17, 17, 17, 0.35);
+  color: #444;
 }
 
 .cal-empty {
   padding: 32px 0;
-  font-size: 0.85rem;
-  color: rgba(17, 17, 17, 0.4);
+  font-size: 0.9rem;
+  color: #444;
 }
 
 @media (max-width: 768px) {
   .dashboard {
     padding: 28px 20px;
-    gap: 28px;
+    gap: 24px;
   }
 
   .hero {
     flex-direction: column;
     align-items: flex-start;
-    gap: 20px;
-    padding-bottom: 28px;
+    gap: 16px;
+    padding-bottom: 24px;
   }
 
   .hero-weather { text-align: left; }
   .weather-main { justify-content: flex-start; }
-  .clock { font-size: clamp(3.2rem, 14vw, 5.5rem); }
-  .current-temp { font-size: 2.4rem; font-weight: 700; }
+  .date { font-size: clamp(1.2rem, 3.5vw, 1.6rem); }
+  .clock { font-size: clamp(3rem, 12vw, 5rem); }
+  .current-temp { font-size: 2.6rem; font-weight: 700; }
 
   .hourly {
     margin: 0 -20px;
@@ -292,8 +282,15 @@ button { font: inherit; cursor: pointer; }
   }
 
   .hour-card {
-    flex: 0 0 calc(100% / 6);
-    min-width: 64px;
+    flex: 0 0 calc(100% / 4);
+  }
+
+  .hour-card:nth-child(6n) {
+    border-right: 1px solid #ddd;
+  }
+
+  .hour-card:nth-child(4n) {
+    border-right: none;
   }
 }
 
@@ -309,10 +306,17 @@ button { font: inherit; cursor: pointer; }
   }
 
   .hour-card {
-    flex: 0 0 calc(100% / 5);
-    min-width: 56px;
+    flex: 0 0 calc(100% / 3);
     padding: 12px 4px;
     gap: 8px;
+  }
+
+  .hour-card:nth-child(4n) {
+    border-right: 1px solid #ddd;
+  }
+
+  .hour-card:nth-child(3n) {
+    border-right: none;
   }
 
   .cal-event-time { flex: 0 0 48px; }

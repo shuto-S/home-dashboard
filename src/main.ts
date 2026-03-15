@@ -135,28 +135,28 @@ const weatherCodeLabelMap: Record<WeatherCode, string> = {
   99: 'Severe Thunderstorm'
 };
 
-const weatherCodeIconMap: Record<WeatherCode, string> = {
-  0: 'clear_day',
-  1: 'partly_cloudy_day',
-  2: 'cloud',
-  3: 'cloud',
-  45: 'foggy',
-  48: 'foggy',
-  51: 'rainy_light',
-  53: 'rainy',
-  55: 'rainy_heavy',
-  61: 'rainy_light',
-  63: 'rainy',
-  65: 'rainy_heavy',
-  71: 'weather_snowy',
-  73: 'weather_snowy',
-  75: 'snowing_heavy',
-  80: 'rainy_light',
-  81: 'rainy',
-  82: 'rainy_heavy',
-  95: 'thunderstorm',
-  96: 'thunderstorm',
-  99: 'thunderstorm'
+const weatherCodeSymbolMap: Record<WeatherCode, string> = {
+  0: '☀',
+  1: '☀',
+  2: '☁',
+  3: '☁',
+  45: '☁',
+  48: '☁',
+  51: '☂',
+  53: '☂',
+  55: '☂',
+  61: '☂',
+  63: '☂',
+  65: '☂',
+  71: '❄',
+  73: '❄',
+  75: '❄',
+  80: '☂',
+  81: '☂',
+  82: '☂',
+  95: '⚡',
+  96: '⚡',
+  99: '⚡'
 };
 
 const appRoot = document.querySelector<HTMLDivElement>('#app');
@@ -189,7 +189,7 @@ if (savedToken && savedToken.expiresAt > Date.now()) {
   state.calendarStatus = 'Syncing calendar';
 }
 
-render();
+renderFull();
 startClock();
 setupConnectivityWatcher();
 registerServiceWorker();
@@ -212,14 +212,13 @@ window.setInterval(() => {
 
 function startClock() {
   window.setInterval(() => {
-    render();
+    updateClock();
   }, 1000);
 }
 
 function setupConnectivityWatcher() {
   window.addEventListener('online', () => {
     state.isOffline = false;
-    render();
     void refreshWeather();
     if (state.isCalendarAuthorized) {
       void refreshCalendar();
@@ -228,7 +227,6 @@ function setupConnectivityWatcher() {
 
   window.addEventListener('offline', () => {
     state.isOffline = true;
-    render();
   });
 }
 
@@ -242,14 +240,14 @@ function registerServiceWorker() {
 
 function setupCalendar() {
   if (!state.isCalendarConfigured) {
-    render();
+    updateCalendar();
     return;
   }
 
   const oauth2 = window.google?.accounts?.oauth2;
   if (!oauth2) {
     state.calendarStatus = 'Waiting for Google auth library';
-    render();
+    updateCalendar();
     window.setTimeout(setupCalendar, 500);
     return;
   }
@@ -261,7 +259,7 @@ function setupCalendar() {
       if (response.error) {
         state.calendarStatus = 'Calendar auth failed';
         state.lastError = response.error;
-        render();
+        updateCalendar();
         return;
       }
 
@@ -269,17 +267,16 @@ function setupCalendar() {
       saveToken(response.access_token, response.expires_in);
       state.isCalendarAuthorized = true;
       state.calendarStatus = 'Syncing calendar';
-      render();
+      updateCalendar();
       void refreshCalendar();
     }
   });
 
-  render();
+  updateCalendar();
 }
 
 async function refreshWeather() {
   state.weatherStatus = 'Updating weather';
-  render();
 
   try {
     const url = new URL('https://api.open-meteo.com/v1/forecast');
@@ -307,7 +304,7 @@ async function refreshWeather() {
     state.lastError = error instanceof Error ? error.message : 'unknown-weather-error';
   }
 
-  render();
+  updateWeather();
 }
 
 async function refreshCalendar() {
@@ -320,7 +317,6 @@ async function refreshCalendarInternal(allowReauth: boolean) {
   }
 
   state.calendarStatus = 'Updating events';
-  render();
 
   try {
     const rangeStart = new Date();
@@ -350,7 +346,7 @@ async function refreshCalendarInternal(allowReauth: boolean) {
       clearToken();
       state.isCalendarAuthorized = false;
       state.calendarStatus = 'Auth token expired';
-      render();
+      updateCalendar();
       return;
     }
 
@@ -373,32 +369,59 @@ async function refreshCalendarInternal(allowReauth: boolean) {
     state.lastError = error instanceof Error ? error.message : 'unknown-calendar-error';
   }
 
-  render();
+  updateCalendar();
 }
 
-function render() {
+function renderFull() {
   const now = new Date();
 
   app.innerHTML = `
     <main class="dashboard">
       <section class="hero">
         <div>
-          <p class="date">${formatDate(now)}</p>
-          <h1 class="clock">${formatClock(now)}</h1>
+          <p class="date" id="date-display">${formatDate(now)}</p>
+          <h1 class="clock" id="clock-display">${formatClock(now)}</h1>
         </div>
-        ${renderTodayWeather()}
+        <div id="weather-display">${renderTodayWeather()}</div>
       </section>
 
-      <section class="hourly">
+      <section class="hourly" id="hourly-display">
         ${renderHourlyCards()}
       </section>
 
-      <section class="calendar">
+      <section class="calendar" id="calendar-display">
         ${renderCalendarContent()}
       </section>
     </main>
   `;
 
+  attachCalendarListeners();
+}
+
+function updateClock() {
+  const now = new Date();
+  const dateEl = document.getElementById('date-display');
+  const clockEl = document.getElementById('clock-display');
+  if (dateEl) dateEl.textContent = formatDate(now);
+  if (clockEl) clockEl.textContent = formatClock(now);
+}
+
+function updateWeather() {
+  const weatherEl = document.getElementById('weather-display');
+  const hourlyEl = document.getElementById('hourly-display');
+  if (weatherEl) weatherEl.innerHTML = renderTodayWeather();
+  if (hourlyEl) hourlyEl.innerHTML = renderHourlyCards();
+}
+
+function updateCalendar() {
+  const calendarEl = document.getElementById('calendar-display');
+  if (calendarEl) {
+    calendarEl.innerHTML = renderCalendarContent();
+    attachCalendarListeners();
+  }
+}
+
+function attachCalendarListeners() {
   const connectButton = app.querySelector<HTMLButtonElement>('[data-action="connect-calendar"]');
   connectButton?.addEventListener('click', () => {
     tokenClient?.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
@@ -415,13 +438,13 @@ function renderTodayWeather() {
     return '<div class="hero-weather"><p class="weather-loading">—</p></div>';
   }
 
-  const icon = weatherCodeIconMap[state.weather.currentCode];
+  const icon = weatherCodeSymbolMap[state.weather.currentCode];
   const label = weatherCodeLabelMap[state.weather.currentCode];
 
   return `
     <div class="hero-weather">
       <div class="weather-main">
-        <span class="weather-icon material-symbols-outlined">${icon}</span>
+        <span class="weather-icon">${icon}</span>
         <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
       <p class="weather-detail">${label} / ${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}°</p>
@@ -440,7 +463,7 @@ function renderHourlyCards() {
       (entry) => `
         <div class="hour-card">
           <span class="hc-time">${formatHour(entry.time)}</span>
-          <span class="hc-icon material-symbols-outlined">${weatherCodeIconMap[entry.weatherCode]}</span>
+          <span class="hc-icon">${weatherCodeSymbolMap[entry.weatherCode]}</span>
           <span class="hc-temp">${Math.round(entry.temperature)}°</span>
           <span class="hc-precip">${Math.round(entry.precipitationProbability)}%</span>
         </div>
@@ -656,16 +679,6 @@ function describeCalendarEvent(event: CalendarEvent) {
 
   if (start <= now && now <= end) {
     return 'Now';
-  }
-
-  const deltaMinutes = Math.round((start - now) / (60 * 1000));
-  if (deltaMinutes >= 0 && deltaMinutes < 60) {
-    return `in ${deltaMinutes}m`;
-  }
-
-  const deltaHours = Math.round(deltaMinutes / 60);
-  if (deltaHours >= 0 && deltaHours <= 6) {
-    return `in ${deltaHours}h`;
   }
 
   return '';
