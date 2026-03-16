@@ -288,6 +288,7 @@ button { font: inherit; cursor: pointer; }
   .hourly {
     margin: 0 -18px;
     padding: 0 18px;
+    margin-bottom: 8px;
   }
 
   .hour-card {
@@ -303,6 +304,7 @@ button { font: inherit; cursor: pointer; }
   .cal-event { gap: 18px; }
   .cal-event-time { min-width: 96px; font-size: 0.84rem; }
   .cal-event-summary { font-size: 0.94rem; }
+  .calendar { padding-top: 10px; }
 }
 
 @media (max-width: 480px) {
@@ -314,6 +316,7 @@ button { font: inherit; cursor: pointer; }
   .hourly {
     margin: 0 -16px;
     padding: 0 16px;
+    margin-bottom: 10px;
   }
 
   .hour-card {
@@ -351,6 +354,10 @@ button { font: inherit; cursor: pointer; }
   .weather-detail,
   .weather-location {
     font-size: 0.7rem;
+  }
+
+  .calendar {
+    padding-top: 18px;
   }
 
   .cal-event {
