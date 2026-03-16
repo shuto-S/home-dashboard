@@ -73,7 +73,17 @@ The frontend never stores Google access tokens. It calls the backend with `crede
 
 ## Local development
 
-Run the frontend and backend in separate terminals.
+Run the frontend and backend either together from the repo root or separately.
+
+Together:
+
+\`\`\`bash
+make dev
+\`\`\`
+
+`make dev` prints the frontend and backend URLs first, then starts both processes. The frontend is pinned to `http://localhost:5173` with Vite `--strictPort`, so startup fails instead of silently changing ports.
+
+Separate terminals:
 
 Frontend:
 
@@ -86,8 +96,6 @@ Backend:
 \`\`\`bash
 make dev-server
 \`\`\`
-
-Or use `make dev` to print the two commands from the repo root.
 
 Default local URLs:
 
@@ -127,7 +135,7 @@ The frontend output is written to `frontend/dist/`. The backend compiles from `b
 
 ## Verification checklist
 
-- Frontend shows weather after `make dev-client`
+- Frontend shows weather after `make dev` or `make dev-client`
 - `GET /health` on the backend returns OK
 - Google login succeeds and redirects back to the frontend
 - Calendar events appear after authentication
