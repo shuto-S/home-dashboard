@@ -53,7 +53,7 @@ type googleEvent struct {
 
 var errCalendarUnauthorized = errors.New("calendar unauthorized")
 
-const calendarLookaheadDays = 90
+const calendarLookaheadDays = 30
 const calendarMaxResults = 100
 
 func NewService(cfg *config.Config, authService *auth.Service) *Service {

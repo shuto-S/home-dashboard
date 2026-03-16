@@ -29,6 +29,13 @@ type WeatherSnapshot = {
   maxTemp: number;
   minTemp: number;
   updatedAt: string;
+  daily: Array<{
+    dateKey: string;
+    weatherCode: WeatherCode;
+    maxTemp: number;
+    minTemp: number;
+    precipitationProbabilityMax: number;
+  }>;
   hourly: Array<{
     time: string;
     temperature: number;
@@ -53,6 +60,7 @@ type CalendarSnapshot = {
 };
 
 type CalendarGroup = {
+  dateKey: string;
   label: string;
   events: CalendarEvent[];
 };
@@ -245,8 +253,8 @@ async function refreshWeather() {
     url.searchParams.set('timezone', config.timezone);
     url.searchParams.set('current', 'temperature_2m,weather_code');
     url.searchParams.set('hourly', 'temperature_2m,precipitation_probability,weather_code');
-    url.searchParams.set('forecast_days', '2');
-    url.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min');
+    url.searchParams.set('forecast_days', '16');
+    url.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max');
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -372,6 +380,7 @@ function renderTodayWeather() {
 
   const icon = weatherCodeSymbolMap[state.weather.currentCode];
   const label = weatherCodeLabelMap[state.weather.currentCode];
+  const todayPrecipitation = state.weather.daily[0]?.precipitationProbabilityMax ?? 0;
 
   return `
     <div class="hero-weather">
@@ -380,6 +389,7 @@ function renderTodayWeather() {
         <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
       <p class="weather-detail">${label} / ${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}°</p>
+      <p class="weather-precip">Rain ${Math.round(todayPrecipitation)}%</p>
       <p class="weather-location">${escapeHtml(config.locationLabel)}</p>
     </div>
   `;
@@ -392,9 +402,9 @@ function renderHourlyCards() {
 
   const cards = state.weather.hourly
     .map(
-      (entry) => `
+      (entry, index) => `
         <div class="hour-card">
-          <span class="hc-time">${formatHour(entry.time)}</span>
+          <span class="hc-time">${index === 0 ? 'Now' : formatHour(entry.time)}</span>
           <span class="hc-icon">${weatherCodeSymbolMap[entry.weatherCode]}</span>
           <span class="hc-temp">${Math.round(entry.temperature)}°</span>
           <span class="hc-precip">${Math.round(entry.precipitationProbability)}%</span>
@@ -432,7 +442,10 @@ function renderCalendarContent() {
     .map(
       (group) => `
         <div class="cal-group">
-          <p class="cal-group-label">${group.label}</p>
+          <div class="cal-group-label-row">
+            <p class="cal-group-label">${group.label}</p>
+            ${renderCalendarGroupWeather(group.dateKey)}
+          </div>
           ${group.events
             .map(
               (event) => `
@@ -449,6 +462,25 @@ function renderCalendarContent() {
     )
     .join('');
   return `<div class="calendar-body">${groups}</div>`;
+}
+
+function renderCalendarGroupWeather(dateKey: string) {
+  const dailyWeather = state.weather?.daily.find((entry) => entry.dateKey === dateKey);
+  const weatherCode = dateKey === getDateKey(new Date())
+    ? state.weather?.currentCode
+    : dailyWeather?.weatherCode;
+
+  if (!state.weather || weatherCode === undefined || !dailyWeather) {
+    return '';
+  }
+
+  return `
+    <span class="cal-group-weather" aria-hidden="true">
+      <span class="cal-group-weather-icon">${weatherCodeSymbolMap[weatherCode]}</span>
+      <span class="cal-group-weather-temp">${Math.round(dailyWeather.maxTemp)}° / ${Math.round(dailyWeather.minTemp)}°</span>
+      <span class="cal-group-weather-precip">${Math.round(dailyWeather.precipitationProbabilityMax)}%</span>
+    </span>
+  `;
 }
 
 function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
@@ -471,6 +503,13 @@ function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
     maxTemp: payload.daily.temperature_2m_max[0],
     minTemp: payload.daily.temperature_2m_min[0],
     updatedAt: new Date().toISOString(),
+    daily: payload.daily.time.map((time, index) => ({
+      dateKey: time,
+      weatherCode: toWeatherCode(payload.daily.weather_code[index]),
+      maxTemp: payload.daily.temperature_2m_max[index],
+      minTemp: payload.daily.temperature_2m_min[index],
+      precipitationProbabilityMax: payload.daily.precipitation_probability_max[index]
+    })),
     hourly
   };
 }
@@ -496,6 +535,7 @@ function groupCalendarEvents(events: CalendarEvent[]): CalendarGroup[] {
   }
 
   return Array.from(grouped.entries()).map(([key, groupedEvents]) => ({
+    dateKey: key,
     label: formatCalendarGroupLabel(key),
     events: groupedEvents.sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
@@ -693,7 +733,10 @@ type OpenMeteoResponse = {
     weather_code: number[];
   };
   daily: {
+    time: string[];
+    weather_code: number[];
     temperature_2m_max: number[];
     temperature_2m_min: number[];
+    precipitation_probability_max: number[];
   };
 };
