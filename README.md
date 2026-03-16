@@ -5,8 +5,10 @@ An e-ink optimized home dashboard built with a Vite + TypeScript frontend and a 
 ## Features
 
 - Always-on display of date, day of week, and current time with 1-second clock refresh
-- Current weather, high/low temperatures, and a 6-hour forecast from Open-Meteo
+- Current weather, daily low/high temperatures, and rain probability from Open-Meteo
+- Tap-to-expand weather panel with a 6-hour forecast and a 7-day forecast
 - Google Calendar events fetched through a Go API instead of direct browser OAuth
+- Upcoming Google Calendar events grouped by day over a 30-day lookahead window
 - SQLite-backed refresh-token persistence for long-lived Calendar access
 - localStorage cache for weather and calendar snapshots during reloads and offline periods
 - PWA support with Service Worker for static asset caching
@@ -27,8 +29,9 @@ The frontend never stores Google access tokens. It calls the backend with `crede
 - **High-contrast palette** — Text uses a small set of solid grayscale values instead of low-opacity grays.
 - **System-first typography** — The main UI uses system fonts, with a monospaced display font for the date and clock.
 - **Simple monochrome weather glyphs** — Weather conditions are rendered with Unicode symbols instead of icon fonts.
-- **Fixed hourly forecast grid** — The forecast is presented as a 6-hour grid with no horizontal scrolling.
-- **No motion effects** — Animations and transitions are removed to reduce ghosting on e-ink panels.
+- **Compact fixed forecast layout** — The expanded forecast uses a 6-hour grid and a 7-day list with no horizontal scrolling.
+- **Limited motion only where useful** — The only transition is the weather accordion open/close animation.
+- **Dense full-screen layout** — Padding and spacing are intentionally reduced so more calendar content fits on Kindle-class displays.
 
 ## Frontend setup
 
@@ -49,7 +52,7 @@ The frontend never stores Google access tokens. It calls the backend with `crede
    - `VITE_LATITUDE`: location latitude
    - `VITE_LONGITUDE`: location longitude
    - `VITE_TIMEZONE`: e.g. `Asia/Tokyo` . This controls the dashboard clock, date labels, and hourly weather times regardless of the device's local timezone.
-   - `VITE_LOCATION_LABEL`: display label such as `Home`
+   - `VITE_LOCATION_LABEL`: optional location label for future/custom UI variants
    - `VITE_API_BASE`: backend base URL, e.g. `http://localhost:8080`
 
 ## Backend setup
@@ -184,6 +187,7 @@ The frontend output is written to `frontend/dist/`. The backend compiles from `b
 - `GET /health` on the backend returns OK
 - Google login succeeds and redirects back to the frontend
 - Calendar events appear after authentication
+- Weather accordion opens from the hero section and shows both hourly and weekly forecast blocks
 - Restarting the Go server preserves Calendar access through SQLite token storage
 - Restarting the browser preserves access while the backend session cookie remains valid
 - `make build` succeeds
