@@ -31,7 +31,9 @@ button { font: inherit; cursor: pointer; }
   align-items: flex-start;
   gap: 18px;
   padding-bottom: 32px;
-  border-bottom: 2px solid #bbb;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .hero-copy {
@@ -111,6 +113,19 @@ button { font: inherit; cursor: pointer; }
 .hourly {
   margin: 0 -40px;
   padding: 0 40px;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease, padding 0.25s ease;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.hourly--hidden {
+  max-height: 0;
+  opacity: 0;
+  margin-top: -32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
 }
 
 .hourly-track {
@@ -171,6 +186,79 @@ button { font: inherit; cursor: pointer; }
   padding: 24px 0;
   font-size: 0.85rem;
   color: #555;
+}
+
+.weekly-forecast {
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.weekly-row {
+  display: grid;
+  grid-template-columns: 56px 1.4rem 32px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 0.88rem;
+}
+
+.weekly-row--today {
+  font-weight: 800;
+}
+
+.weekly-day {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #444;
+}
+
+.weekly-row--today .weekly-day {
+  color: #111;
+}
+
+.weekly-icon {
+  font-size: 1.18rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.weekly-precip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #666;
+  text-align: right;
+}
+
+.weekly-temp {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.weekly-temp--lo {
+  text-align: right;
+  color: #666;
+}
+
+.weekly-temp--hi {
+  text-align: left;
+}
+
+.weekly-bar-track {
+  position: relative;
+  height: 5px;
+  background: #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.weekly-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #888;
+  border-radius: 3px;
 }
 
 .calendar {
@@ -336,6 +424,12 @@ button { font: inherit; cursor: pointer; }
   .cal-group-weather { gap: 6px; }
   .cal-group-weather-icon { font-size: 1.04rem; }
   .cal-group-weather-detail { font-size: 0.6rem; }
+
+  .weekly-row { grid-template-columns: 48px 1.2rem 28px 1fr 28px; gap: 8px; padding: 6px 0; }
+  .weekly-day { font-size: 0.72rem; }
+  .weekly-icon { font-size: 1.04rem; }
+  .weekly-temp { font-size: 0.76rem; }
+  .weekly-bar-track { height: 4px; }
 }
 
 @media (max-width: 480px) {
@@ -403,4 +497,10 @@ button { font: inherit; cursor: pointer; }
   .cal-group-weather { gap: 5px; }
   .cal-group-weather-icon { font-size: 0.96rem; }
   .cal-group-weather-detail { font-size: 0.54rem; }
+
+  .weekly-row { grid-template-columns: 42px 1.1rem 24px 1fr 24px; gap: 6px; padding: 5px 0; }
+  .weekly-day { font-size: 0.66rem; }
+  .weekly-icon { font-size: 0.96rem; }
+  .weekly-temp { font-size: 0.7rem; }
+  .weekly-bar-track { height: 4px; }
 }

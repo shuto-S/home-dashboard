@@ -322,7 +322,7 @@ function renderFull() {
 
   app.innerHTML = `
     <main class="dashboard">
-      <section class="hero">
+      <section class="hero" id="hero-section">
         <div class="hero-copy">
           <p class="date" id="date-display">${formatDate(now)}</p>
           <h1 class="clock" id="clock-display">${formatClock(now)}</h1>
@@ -330,8 +330,9 @@ function renderFull() {
         <div id="weather-display">${renderTodayWeather()}</div>
       </section>
 
-      <section class="hourly" id="hourly-display">
+      <section class="hourly hourly--hidden" id="hourly-display">
         ${renderHourlyCards()}
+        ${renderWeeklyForecast()}
       </section>
 
       <section class="calendar" id="calendar-display">
@@ -341,6 +342,17 @@ function renderFull() {
   `;
 
   attachCalendarListeners();
+  attachHeroToggle();
+}
+
+function attachHeroToggle() {
+  const heroEl = document.getElementById('hero-section');
+  const hourlyEl = document.getElementById('hourly-display');
+  if (heroEl && hourlyEl) {
+    heroEl.addEventListener('click', () => {
+      hourlyEl.classList.toggle('hourly--hidden');
+    });
+  }
 }
 
 function updateClock() {
@@ -355,7 +367,9 @@ function updateWeather() {
   const weatherEl = document.getElementById('weather-display');
   const hourlyEl = document.getElementById('hourly-display');
   if (weatherEl) weatherEl.innerHTML = renderTodayWeather();
-  if (hourlyEl) hourlyEl.innerHTML = renderHourlyCards();
+  if (hourlyEl) {
+    hourlyEl.innerHTML = renderHourlyCards() + renderWeeklyForecast();
+  }
 }
 
 function updateCalendar() {
@@ -389,7 +403,7 @@ function renderTodayWeather() {
         <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
       <p class="weather-label">${label}</p>
-      <p class="weather-meta">${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}° · Rain ${Math.round(todayPrecipitation)}%</p>
+      <p class="weather-meta">L:${Math.round(state.weather.minTemp)}° H:${Math.round(state.weather.maxTemp)}° · Rain ${Math.round(todayPrecipitation)}%</p>
     </div>
   `;
 }
@@ -413,6 +427,49 @@ function renderHourlyCards() {
     .join('');
 
   return `<div class="hourly-track">${cards}</div>`;
+}
+
+function renderWeeklyForecast() {
+  if (!state.weather || state.weather.daily.length === 0) {
+    return '';
+  }
+
+  const days = state.weather.daily.slice(0, 7);
+  const weekMin = Math.min(...days.map((d) => d.minTemp));
+  const weekMax = Math.max(...days.map((d) => d.maxTemp));
+  const range = weekMax - weekMin || 1;
+  const todayKey = getDateKey(new Date());
+
+  const rows = days
+    .map((day) => {
+      const isToday = day.dateKey === todayKey;
+      const label = isToday ? 'Today' : formatWeeklyDayLabel(day.dateKey);
+      const barLeft = ((day.minTemp - weekMin) / range) * 100;
+      const barWidth = ((day.maxTemp - day.minTemp) / range) * 100;
+      return `
+        <div class="weekly-row${isToday ? ' weekly-row--today' : ''}">
+          <span class="weekly-day">${label}</span>
+          <span class="weekly-icon">${weatherCodeSymbolMap[isToday ? state.weather!.currentCode : day.weatherCode]}</span>
+          <span class="weekly-temp weekly-temp--lo">${Math.round(day.minTemp)}°</span>
+          <span class="weekly-bar-track">
+            <span class="weekly-bar-fill" style="left:${barLeft.toFixed(1)}%;width:${barWidth.toFixed(1)}%"></span>
+          </span>
+          <span class="weekly-temp weekly-temp--hi">${Math.round(day.maxTemp)}°</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  return `<div class="weekly-forecast">${rows}</div>`;
+}
+
+function formatWeeklyDayLabel(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
+    weekday: 'short'
+  }).format(date);
 }
 
 function renderCalendarContent() {
@@ -476,7 +533,7 @@ function renderCalendarGroupWeather(dateKey: string) {
   return `
     <span class="cal-group-weather" aria-hidden="true">
       <span class="cal-group-weather-icon">${weatherCodeSymbolMap[weatherCode]}</span>
-      <span class="cal-group-weather-detail">${Math.round(dailyWeather.maxTemp)}°/${Math.round(dailyWeather.minTemp)}° Rain ${Math.round(dailyWeather.precipitationProbabilityMax)}%</span>
+      <span class="cal-group-weather-detail">L:${Math.round(dailyWeather.minTemp)}° H:${Math.round(dailyWeather.maxTemp)}° Rain ${Math.round(dailyWeather.precipitationProbabilityMax)}%</span>
     </span>
   `;
 }
