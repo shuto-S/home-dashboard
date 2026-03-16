@@ -57,6 +57,12 @@ type CalendarGroup = {
   events: CalendarEvent[];
 };
 
+type AuthStatusResponse = {
+  configured: boolean;
+  authenticated: boolean;
+  message: string;
+};
+
 type DashboardState = {
   weather: WeatherSnapshot | null;
   calendar: CalendarSnapshot | null;
@@ -68,37 +74,8 @@ type DashboardState = {
   lastError: string | null;
 };
 
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        oauth2?: {
-          initTokenClient: (config: TokenClientConfig) => TokenClient;
-        };
-      };
-    };
-  }
-}
-
-type TokenResponse = {
-  access_token: string;
-  expires_in: number;
-  error?: string;
-};
-
-type TokenClient = {
-  requestAccessToken: (options?: { prompt?: string }) => void;
-};
-
-type TokenClientConfig = {
-  client_id: string;
-  scope: string;
-  callback: (response: TokenResponse) => void;
-};
-
 const WEATHER_STORAGE_KEY = 'home-dashboard.weather';
 const CALENDAR_STORAGE_KEY = 'home-dashboard.calendar';
-const TOKEN_STORAGE_KEY = 'home-dashboard.token';
 const WEATHER_POLL_MS = 15 * 60 * 1000;
 const CALENDAR_POLL_MS = 10 * 60 * 1000;
 
@@ -107,8 +84,7 @@ const config = {
   longitude: parseFloat(import.meta.env.VITE_LONGITUDE ?? '139.6500'),
   timezone: import.meta.env.VITE_TIMEZONE ?? 'Asia/Tokyo',
   locationLabel: import.meta.env.VITE_LOCATION_LABEL ?? 'Home',
-  calendarId: import.meta.env.VITE_CALENDAR_ID ?? '',
-  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+  apiBase: normalizeBaseUrl(import.meta.env.VITE_API_BASE ?? 'http://localhost:8080')
 };
 
 const weatherCodeLabelMap: Record<WeatherCode, string> = {
@@ -171,34 +147,19 @@ const state: DashboardState = {
   weather: readSnapshot<WeatherSnapshot>(WEATHER_STORAGE_KEY),
   calendar: readSnapshot<CalendarSnapshot>(CALENDAR_STORAGE_KEY),
   weatherStatus: 'Loading weather',
-  calendarStatus: config.calendarId && config.googleClientId ? 'Calendar not connected' : 'Calendar not configured',
-  isCalendarConfigured: Boolean(config.calendarId && config.googleClientId),
+  calendarStatus: 'Checking calendar connection',
+  isCalendarConfigured: true,
   isCalendarAuthorized: false,
   isOffline: !window.navigator.onLine,
   lastError: null
 };
-
-let tokenClient: TokenClient | null = null;
-let accessToken: string | null = null;
-
-// Restore saved token
-const savedToken = readSnapshot<{ token: string; expiresAt: number }>(TOKEN_STORAGE_KEY);
-if (savedToken && savedToken.expiresAt > Date.now()) {
-  accessToken = savedToken.token;
-  state.isCalendarAuthorized = true;
-  state.calendarStatus = 'Syncing calendar';
-}
 
 renderFull();
 startClock();
 setupConnectivityWatcher();
 registerServiceWorker();
 void refreshWeather();
-setupCalendar();
-
-if (state.isCalendarAuthorized) {
-  void refreshCalendar();
-}
+void setupCalendar();
 
 window.setInterval(() => {
   void refreshWeather();
@@ -222,6 +183,8 @@ function setupConnectivityWatcher() {
     void refreshWeather();
     if (state.isCalendarAuthorized) {
       void refreshCalendar();
+    } else {
+      void refreshCalendarAuthStatus();
     }
   });
 
@@ -238,39 +201,36 @@ function registerServiceWorker() {
   }
 }
 
-function setupCalendar() {
-  if (!state.isCalendarConfigured) {
+async function setupCalendar() {
+  await refreshCalendarAuthStatus();
+  if (state.isCalendarAuthorized) {
+    await refreshCalendar();
+  } else {
     updateCalendar();
-    return;
   }
+}
 
-  const oauth2 = window.google?.accounts?.oauth2;
-  if (!oauth2) {
-    state.calendarStatus = 'Waiting for Google auth library';
-    updateCalendar();
-    window.setTimeout(setupCalendar, 500);
-    return;
-  }
+async function refreshCalendarAuthStatus() {
+  try {
+    const response = await fetch(buildApiUrl('/api/auth/status'), {
+      credentials: 'include'
+    });
 
-  tokenClient = oauth2.initTokenClient({
-    client_id: config.googleClientId,
-    scope: 'https://www.googleapis.com/auth/calendar.readonly',
-    callback: (response) => {
-      if (response.error) {
-        state.calendarStatus = 'Calendar auth failed';
-        state.lastError = response.error;
-        updateCalendar();
-        return;
-      }
-
-      accessToken = response.access_token;
-      saveToken(response.access_token, response.expires_in);
-      state.isCalendarAuthorized = true;
-      state.calendarStatus = 'Syncing calendar';
-      updateCalendar();
-      void refreshCalendar();
+    if (!response.ok) {
+      throw new Error(`calendar-status:${response.status}`);
     }
-  });
+
+    const status = (await response.json()) as AuthStatusResponse;
+    state.isCalendarConfigured = status.configured;
+    state.isCalendarAuthorized = status.authenticated;
+    state.calendarStatus = status.message;
+    state.lastError = null;
+  } catch (error) {
+    state.isCalendarConfigured = true;
+    state.isCalendarAuthorized = false;
+    state.calendarStatus = 'Calendar service unavailable';
+    state.lastError = error instanceof Error ? error.message : 'unknown-calendar-status-error';
+  }
 
   updateCalendar();
 }
@@ -300,7 +260,7 @@ async function refreshWeather() {
     state.lastError = null;
     writeSnapshot(WEATHER_STORAGE_KEY, snapshot);
   } catch (error) {
-    state.weatherStatus = state.weather ? `Offline — last updated ${formatShortTime(state.weather.updatedAt)}` : 'Unable to fetch weather';
+    state.weatherStatus = state.weather ? `Offline - last updated ${formatShortTime(state.weather.updatedAt)}` : 'Unable to fetch weather';
     state.lastError = error instanceof Error ? error.message : 'unknown-weather-error';
   }
 
@@ -308,44 +268,28 @@ async function refreshWeather() {
 }
 
 async function refreshCalendar() {
-  return refreshCalendarInternal(true);
-}
-
-async function refreshCalendarInternal(allowReauth: boolean) {
-  if (!accessToken || !config.calendarId) {
+  if (!state.isCalendarConfigured || !state.isCalendarAuthorized) {
     return;
   }
 
   state.calendarStatus = 'Updating events';
 
   try {
-    const rangeStart = new Date();
-    const rangeEnd = new Date();
-    rangeEnd.setDate(rangeEnd.getDate() + 7);
-
-    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.calendarId)}/events`);
-    url.searchParams.set('singleEvents', 'true');
-    url.searchParams.set('orderBy', 'startTime');
-    url.searchParams.set('timeMin', rangeStart.toISOString());
-    url.searchParams.set('timeMax', rangeEnd.toISOString());
-    url.searchParams.set('maxResults', '20');
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
+    const response = await fetch(buildApiUrl('/api/calendar/events'), {
+      credentials: 'include'
     });
 
-    if (response.status === 401 && tokenClient && allowReauth) {
-      clearToken();
-      tokenClient.requestAccessToken({ prompt: '' });
+    if (response.status === 401) {
+      state.isCalendarAuthorized = false;
+      state.calendarStatus = 'Reconnect Google Calendar';
+      updateCalendar();
       return;
     }
 
-    if (response.status === 401 && tokenClient) {
-      clearToken();
+    if (response.status === 503) {
+      state.isCalendarConfigured = false;
       state.isCalendarAuthorized = false;
-      state.calendarStatus = 'Auth token expired';
+      state.calendarStatus = 'Calendar not configured';
       updateCalendar();
       return;
     }
@@ -354,18 +298,13 @@ async function refreshCalendarInternal(allowReauth: boolean) {
       throw new Error(`calendar:${response.status}`);
     }
 
-    const payload = (await response.json()) as GoogleCalendarResponse;
-    const snapshot: CalendarSnapshot = {
-      events: payload.items.map(toCalendarEvent),
-      updatedAt: new Date().toISOString()
-    };
-
+    const snapshot = (await response.json()) as CalendarSnapshot;
     state.calendar = snapshot;
     state.calendarStatus = `Updated ${formatShortTime(snapshot.updatedAt)}`;
     state.lastError = null;
     writeSnapshot(CALENDAR_STORAGE_KEY, snapshot);
   } catch (error) {
-    state.calendarStatus = state.calendar ? `Offline — last updated ${formatShortTime(state.calendar.updatedAt)}` : 'Unable to fetch events';
+    state.calendarStatus = state.calendar ? `Offline - last updated ${formatShortTime(state.calendar.updatedAt)}` : 'Unable to fetch events';
     state.lastError = error instanceof Error ? error.message : 'unknown-calendar-error';
   }
 
@@ -424,7 +363,7 @@ function updateCalendar() {
 function attachCalendarListeners() {
   const connectButton = app.querySelector<HTMLButtonElement>('[data-action="connect-calendar"]');
   connectButton?.addEventListener('click', () => {
-    tokenClient?.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+    window.location.href = buildApiUrl('/auth/login');
   });
 
   const refreshButton = app.querySelector<HTMLButtonElement>('[data-action="refresh-calendar"]');
@@ -435,7 +374,7 @@ function attachCalendarListeners() {
 
 function renderTodayWeather() {
   if (!state.weather) {
-    return '<div class="hero-weather"><p class="weather-loading">—</p></div>';
+    return '<div class="hero-weather"><p class="weather-loading">-</p></div>';
   }
 
   const icon = weatherCodeSymbolMap[state.weather.currentCode];
@@ -455,7 +394,7 @@ function renderTodayWeather() {
 
 function renderHourlyCards() {
   if (!state.weather) {
-    return '<p class="hourly-empty">—</p>';
+    return '<p class="hourly-empty">-</p>';
   }
 
   const cards = state.weather.hourly
@@ -484,6 +423,7 @@ function renderCalendarContent() {
       <div class="calendar-head">
         <button class="cal-btn" data-action="connect-calendar">Connect Google Calendar</button>
       </div>
+      <p class="cal-empty">${escapeHtml(state.calendarStatus)}</p>
     `;
   }
 
@@ -506,7 +446,7 @@ function renderCalendarContent() {
             .map(
               (event) => `
                 <div class="cal-event${event.isAllDay ? ' cal-event--allday' : ''}">
-                  <span class="cal-event-time">${event.isAllDay ? 'All Day' : `${event.startLabel} – ${event.endLabel}`}</span>
+                  <span class="cal-event-time">${event.isAllDay ? 'All Day' : `${event.startLabel} - ${event.endLabel}`}</span>
                   <span class="cal-event-summary">${escapeHtml(event.summary)}</span>
                   <span class="cal-event-badge">${describeCalendarEvent(event)}</span>
                 </div>
@@ -542,22 +482,6 @@ function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
     minTemp: payload.daily.temperature_2m_min[0],
     updatedAt: new Date().toISOString(),
     hourly
-  };
-}
-
-function toCalendarEvent(item: GoogleCalendarEvent): CalendarEvent {
-  const allDay = Boolean(item.start.date);
-  const startDate = item.start.dateTime ?? item.start.date ?? new Date().toISOString();
-  const endDate = item.end.dateTime ?? item.end.date ?? startDate;
-
-  return {
-    id: item.id,
-    summary: item.summary || 'Untitled',
-    startLabel: allDay ? 'All Day' : formatShortTime(startDate),
-    endLabel: allDay ? 'All Day' : formatShortTime(endDate),
-    startDate,
-    endDate,
-    isAllDay: allDay
   };
 }
 
@@ -602,18 +526,6 @@ function readSnapshot<T>(key: string): T | null {
 
 function writeSnapshot<T>(key: string, snapshot: T) {
   window.localStorage.setItem(key, JSON.stringify(snapshot));
-}
-
-function saveToken(token: string, expiresIn: number) {
-  writeSnapshot(TOKEN_STORAGE_KEY, {
-    token,
-    expiresAt: Date.now() + expiresIn * 1000
-  });
-}
-
-function clearToken() {
-  accessToken = null;
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 function formatDate(date: Date) {
@@ -692,6 +604,14 @@ function toWeatherCode(value: number): WeatherCode {
   return 3;
 }
 
+function normalizeBaseUrl(value: string) {
+  return value.replace(/\/$/, '');
+}
+
+function buildApiUrl(path: string) {
+  return `${config.apiBase}${path}`;
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -715,22 +635,5 @@ type OpenMeteoResponse = {
   daily: {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
-  };
-};
-
-type GoogleCalendarResponse = {
-  items: GoogleCalendarEvent[];
-};
-
-type GoogleCalendarEvent = {
-  id: string;
-  summary?: string;
-  start: {
-    date?: string;
-    dateTime?: string;
-  };
-  end: {
-    date?: string;
-    dateTime?: string;
   };
 };

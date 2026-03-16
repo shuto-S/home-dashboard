@@ -1,103 +1,136 @@
 # Home Dashboard
 
-A serverless living-room dashboard optimized for e-ink displays. Runs entirely in the browser and shows date, time, weather, and Google Calendar on a single screen.
+An e-ink optimized home dashboard built with a Vite + TypeScript frontend and a Go + chi backend. It shows date, time, weather, and Google Calendar on a single screen, while the backend owns OAuth, refresh-token persistence, and Calendar API access.
 
 ## Features
 
-- Always-on display of date, day of week, and current time (1-second refresh)
-- Today's weather, high/low temps, and 6-hour hourly forecast from Open-Meteo
-- Family Google Calendar via the Google Calendar API
-- localStorage cache for instant display on reload and offline fallback
-- PWA with Service Worker for offline support
+- Always-on display of date, day of week, and current time with 1-second clock refresh
+- Current weather, high/low temperatures, and a 6-hour forecast from Open-Meteo
+- Google Calendar events fetched through a Go API instead of direct browser OAuth
+- SQLite-backed refresh-token persistence for long-lived Calendar access
+- localStorage cache for weather and calendar snapshots during reloads and offline periods
+- PWA support with Service Worker for static asset caching
+
+## Architecture
+
+- **Frontend**: Vite + TypeScript in `frontend/`
+- **Backend**: Go + chi in `backend/`
+- **Calendar auth**: Google OAuth authorization-code flow handled by the backend
+- **Calendar token storage**: SQLite database at `backend/data/dashboard.db` by default
+- **Browser auth state**: HttpOnly session cookie issued by the Go API
+
+The frontend never stores Google access tokens. It calls the backend with `credentials: 'include'`, and the backend refreshes tokens as needed before calling the Google Calendar API.
 
 ## E-ink display optimization
 
-The UI is designed for low-refresh-rate e-ink monitors commonly used for always-on home dashboards.
+- **Partial DOM updates** — The clock updates every second via `textContent` replacement on two elements. Weather and calendar sections update only when data changes.
+- **High-contrast palette** — Text uses a small set of solid grayscale values instead of low-opacity grays.
+- **System-first typography** — The main UI uses system fonts, with a monospaced display font for the date and clock.
+- **Simple monochrome weather glyphs** — Weather conditions are rendered with Unicode symbols instead of icon fonts.
+- **Fixed hourly forecast grid** — The forecast is presented as a 6-hour grid with no horizontal scrolling.
+- **No motion effects** — Animations and transitions are removed to reduce ghosting on e-ink panels.
 
-- **Partial DOM updates** — The clock updates every second via `textContent` replacement on two elements. Weather and calendar sections update only on data fetch (15 min / 10 min), avoiding full-page repaints.
-- **High-contrast palette** — All text uses 3 tonal levels (`#111`, `#333`–`#444`, `#555`–`#666`) against a white background. No semi-transparent grays that would dither on e-ink.
-- **System fonts** — No web font loading. Uses `system-ui` / `-apple-system` / `Helvetica Neue` for consistent, bold rendering without sub-pixel aliasing.
-- **Unicode weather symbols** — Weather conditions are shown with basic Unicode glyphs (☀ ☁ ☂ ❄ ⚡) instead of an icon font, ensuring crisp monochrome rendering.
-- **Fixed grid hourly forecast** — The 6-hour forecast uses a wrapping flex grid (6 columns on desktop, 4 on tablet, 3 on mobile) instead of horizontal scrolling.
-- **No animations or transitions** — All hover effects and CSS transitions are removed to avoid ghosting artifacts.
-- **Visible borders** — Structural separators use solid `#bbb` / `#ddd` instead of near-invisible rgba borders.
+## Frontend setup
 
-## Setup
-
-1. Install dependencies.
+1. Install frontend dependencies.
 
    \`\`\`bash
-   npm install
+   make frontend-install
    \`\`\`
 
-2. Create the environment file.
+2. Create the frontend environment file.
 
    \`\`\`bash
-   cp .env.example .env
+   cp frontend/.env.example frontend/.env
    \`\`\`
 
-3. Set the following in \`.env\`:
+3. Configure these frontend values in `frontend/.env`:
 
-   - \`VITE_LATITUDE\`: Your location's latitude
-   - \`VITE_LONGITUDE\`: Your location's longitude
-   - \`VITE_TIMEZONE\`: e.g. \`Asia/Tokyo\`
-   - \`VITE_LOCATION_LABEL\`: Display label for the location, e.g. \`Home\`
-   - \`VITE_CALENDAR_ID\`: Google family calendar ID
-   - \`VITE_GOOGLE_CLIENT_ID\`: OAuth client ID from Google Cloud
+   - `VITE_LATITUDE`: location latitude
+   - `VITE_LONGITUDE`: location longitude
+   - `VITE_TIMEZONE`: e.g. `Asia/Tokyo`
+   - `VITE_LOCATION_LABEL`: display label such as `Home`
+   - `VITE_API_BASE`: backend base URL, e.g. `http://localhost:8080`
 
-4. Start the dev server.
+## Backend setup
+
+1. Create the backend environment file.
 
    \`\`\`bash
-   npm run dev
+   cp backend/.env.example backend/.env
    \`\`\`
 
-5. For always-on display on a home device, use fullscreen mode and install as a PWA.
+2. Configure these backend values in `backend/.env`:
+
+   - `GOOGLE_CLIENT_ID`: Google OAuth client ID
+   - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+   - `GOOGLE_REDIRECT_URI`: callback URL handled by the Go server
+   - `CALENDAR_ID`: target Google Calendar ID
+   - `ALLOWED_ORIGIN`: frontend origin allowed by CORS, e.g. `http://localhost:5173`
+   - `FRONTEND_BASE_URL`: URL to redirect back to after successful login
+   - `SESSION_SECRET`: long random string used to sign the session cookie
+   - `DB_PATH`: optional SQLite file path override
+
+## Local development
+
+Run the frontend and backend in separate terminals.
+
+Frontend:
+
+\`\`\`bash
+make dev-client
+\`\`\`
+
+Backend:
+
+\`\`\`bash
+make dev-server
+\`\`\`
+
+Or use `make dev` to print the two commands from the repo root.
+
+Default local URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8080`
 
 ## Google Calendar configuration
 
-- Create an OAuth client in Google Cloud Console and add your dev URL as an authorized JavaScript origin
-- Use the scope \`https://www.googleapis.com/auth/calendar.readonly\`
-- Find the calendar ID in Google Calendar settings
+Create a Google OAuth client and register the backend callback URL as an authorized redirect URI.
 
-### OAuth setup example
+Local development example:
 
-For local development, add these as authorized JavaScript origins:
+- `http://localhost:8080/auth/callback`
 
-- \`http://localhost:5173\`
-- \`http://127.0.0.1:5173\`
+Production example:
 
-For a fixed home device, also add its URL, e.g.:
+- `https://api.example.com/auth/callback`
 
-- \`http://192.168.1.10:5173\`
-- \`https://dashboard.example.local\`
+The backend requests `https://www.googleapis.com/auth/calendar.readonly` and stores the returned refresh token in SQLite. That allows the dashboard to keep reconnecting to Calendar without repeating the full browser-side token flow.
 
-### Calendar ID example
+To find the calendar ID, open the target Google Calendar, go to **Settings and sharing**, and copy the **Calendar ID**. Family calendars usually look like `xxxx@group.calendar.google.com`.
 
-Open the target calendar in Google Calendar, go to Settings and sharing, and find the Calendar ID. Family calendars typically have the format \`xxxx@group.calendar.google.com\`.
+## Build
 
-## Deployment
+- Frontend only: `make build-client`
+- Backend only: `make build-server`
+- Full build: `make build`
 
-- Dev: \`npm run dev\`
-- Production build: \`npm run build\`
-- Output goes to \`dist/\` — serve it with any static file host
+The frontend output is written to `frontend/dist/`. The backend compiles from `backend/`.
 
-Practical options for home-only use:
+## Deployment notes
 
-- Serve \`dist/\` from an always-on Mac or Raspberry Pi
-- Deploy to Vercel or Netlify and set the OAuth allowed origin to match
+- The backend should run over HTTPS in production if the frontend and API are on separate origins and you want robust cookie-based auth.
+- The frontend must call the backend with credentials included.
+- The backend is intentionally minimal and assumes a single Google account for a household dashboard.
+- Weather remains client-side; only Google Calendar auth and event fetching are moved server-side.
 
 ## Verification checklist
 
-- After setting \`.env\`, weather appears on \`npm run dev\`
-- Google auth works and calendar events are displayed
-- Last display is preserved when network is disconnected
-- Layout fits a single screen on mobile widths
-- \`npm run build\` succeeds
-
-## Notes
-
-- Google Calendar requires a one-time auth flow
-- No server-side secrets are needed — all APIs are browser-safe
-- When offline, t``he Service Worker and localStorage cache keep the last display
-- For production, disable auto-sleep on the display device
-- Calendar event badges show only "All Day" or "Now" (no stale relative times like "in 32m")
+- Frontend shows weather after `make dev-client`
+- `GET /health` on the backend returns OK
+- Google login succeeds and redirects back to the frontend
+- Calendar events appear after authentication
+- Restarting the Go server preserves Calendar access through SQLite token storage
+- Restarting the browser preserves access while the backend session cookie remains valid
+- `make build` succeeds
