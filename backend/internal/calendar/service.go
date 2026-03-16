@@ -34,7 +34,8 @@ type Event struct {
 }
 
 type googleEventsResponse struct {
-	Items []googleEvent `json:"items"`
+	Items         []googleEvent `json:"items"`
+	NextPageToken string        `json:"nextPageToken"`
 }
 
 type googleEvent struct {
@@ -51,6 +52,9 @@ type googleEvent struct {
 }
 
 var errCalendarUnauthorized = errors.New("calendar unauthorized")
+
+const calendarLookaheadDays = 90
+const calendarMaxResults = 100
 
 func NewService(cfg *config.Config, authService *auth.Service) *Service {
 	return &Service{
@@ -96,57 +100,86 @@ func (s *Service) HandleEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) fetchSnapshot(accessToken string) (*Snapshot, error) {
-	rangeStart := time.Now().UTC()
-	rangeEnd := rangeStart.Add(7 * 24 * time.Hour)
+	now := time.Now().In(s.config.Location())
+	rangeStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, s.config.Location())
+	rangeEnd := rangeStart.Add(calendarLookaheadDays * 24 * time.Hour)
 
 	endpoint := fmt.Sprintf("https://www.googleapis.com/calendar/v3/calendars/%s/events", url.PathEscape(s.config.CalendarID))
-	requestURL, err := url.Parse(endpoint)
+	events, err := s.fetchEventsPage(accessToken, endpoint, rangeStart, rangeEnd)
 	if err != nil {
-		return nil, fmt.Errorf("parse google calendar url: %w", err)
-	}
-
-	query := requestURL.Query()
-	query.Set("singleEvents", "true")
-	query.Set("orderBy", "startTime")
-	query.Set("timeMin", rangeStart.Format(time.RFC3339))
-	query.Set("timeMax", rangeEnd.Format(time.RFC3339))
-	query.Set("maxResults", "20")
-	requestURL.RawQuery = query.Encode()
-
-	req, err := http.NewRequest(http.MethodGet, requestURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("create google calendar request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("perform google calendar request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, errCalendarUnauthorized
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("google calendar returned status %d", resp.StatusCode)
-	}
-
-	var payload googleEventsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("decode google calendar response: %w", err)
-	}
-
-	events := make([]Event, 0, len(payload.Items))
-	for _, item := range payload.Items {
-		events = append(events, s.toEvent(item))
+		return nil, err
 	}
 
 	return &Snapshot{
 		Events:    events,
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	}, nil
+}
+
+func (s *Service) fetchEventsPage(accessToken, endpoint string, rangeStart, rangeEnd time.Time) ([]Event, error) {
+	events := make([]Event, 0, calendarMaxResults)
+	pageToken := ""
+
+	for len(events) < calendarMaxResults {
+		requestURL, err := url.Parse(endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("parse google calendar url: %w", err)
+		}
+
+		query := requestURL.Query()
+		query.Set("singleEvents", "true")
+		query.Set("orderBy", "startTime")
+		query.Set("timeMin", rangeStart.UTC().Format(time.RFC3339))
+		query.Set("timeMax", rangeEnd.UTC().Format(time.RFC3339))
+		query.Set("maxResults", "50")
+		if pageToken != "" {
+			query.Set("pageToken", pageToken)
+		}
+		requestURL.RawQuery = query.Encode()
+
+		req, err := http.NewRequest(http.MethodGet, requestURL.String(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("create google calendar request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("perform google calendar request: %w", err)
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			resp.Body.Close()
+			return nil, errCalendarUnauthorized
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("google calendar returned status %d", resp.StatusCode)
+		}
+
+		var payload googleEventsResponse
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decode google calendar response: %w", err)
+		}
+		resp.Body.Close()
+
+		for _, item := range payload.Items {
+			events = append(events, s.toEvent(item))
+			if len(events) >= calendarMaxResults {
+				break
+			}
+		}
+
+		if payload.NextPageToken == "" || len(events) >= calendarMaxResults {
+			break
+		}
+
+		pageToken = payload.NextPageToken
+	}
+
+	return events, nil
 }
 
 func (s *Service) toEvent(item googleEvent) Event {

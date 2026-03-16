@@ -315,7 +315,7 @@ function renderFull() {
   app.innerHTML = `
     <main class="dashboard">
       <section class="hero">
-        <div>
+        <div class="hero-copy">
           <p class="date" id="date-display">${formatDate(now)}</p>
           <h1 class="clock" id="clock-display">${formatClock(now)}</h1>
         </div>
