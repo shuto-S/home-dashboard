@@ -5,7 +5,7 @@ A serverless living-room dashboard optimized for e-ink displays. Runs entirely i
 ## Features
 
 - Always-on display of date, day of week, and current time (1-second refresh)
-- Today's weather, high/low temps, and 12-hour hourly forecast from Open-Meteo
+- Today's weather, high/low temps, and 6-hour hourly forecast from Open-Meteo
 - Family Google Calendar via the Google Calendar API
 - localStorage cache for instant display on reload and offline fallback
 - PWA with Service Worker for offline support
@@ -18,7 +18,7 @@ The UI is designed for low-refresh-rate e-ink monitors commonly used for always-
 - **High-contrast palette** — All text uses 3 tonal levels (`#111`, `#333`–`#444`, `#555`–`#666`) against a white background. No semi-transparent grays that would dither on e-ink.
 - **System fonts** — No web font loading. Uses `system-ui` / `-apple-system` / `Helvetica Neue` for consistent, bold rendering without sub-pixel aliasing.
 - **Unicode weather symbols** — Weather conditions are shown with basic Unicode glyphs (☀ ☁ ☂ ❄ ⚡) instead of an icon font, ensuring crisp monochrome rendering.
-- **Fixed grid hourly forecast** — The 12-hour forecast uses a wrapping flex grid (6 columns on desktop, 4 on tablet, 3 on mobile) instead of horizontal scrolling.
+- **Fixed grid hourly forecast** — The 6-hour forecast uses a wrapping flex grid (6 columns on desktop, 4 on tablet, 3 on mobile) instead of horizontal scrolling.
 - **No animations or transitions** — All hover effects and CSS transitions are removed to avoid ghosting artifacts.
 - **Visible borders** — Structural separators use solid `#bbb` / `#ddd` instead of near-invisible rgba borders.
 
@@ -98,6 +98,6 @@ Practical options for home-only use:
 
 - Google Calendar requires a one-time auth flow
 - No server-side secrets are needed — all APIs are browser-safe
-- When offline, t`he Service Worker and localStorage cache keep the last display
+- When offline, t``he Service Worker and localStorage cache keep the last display
 - For production, disable auto-sleep on the display device
 - Calendar event badges show only "All Day" or "Now" (no stale relative times like "in 32m")

@@ -524,7 +524,7 @@ function renderCalendarContent() {
 function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
   const currentCode = toWeatherCode(payload.current.weather_code);
   const startIndex = findNextHourlyIndex(payload.hourly.time);
-  const hourly = payload.hourly.time.slice(startIndex, startIndex + 12).map((time, offset) => {
+  const hourly = payload.hourly.time.slice(startIndex, startIndex + 6).map((time, offset) => {
     const index = startIndex + offset;
 
     return {
