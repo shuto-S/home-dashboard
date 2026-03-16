@@ -363,11 +363,6 @@ function attachCalendarListeners() {
   connectButton?.addEventListener('click', () => {
     window.location.href = buildApiUrl('/auth/login');
   });
-
-  const refreshButton = app.querySelector<HTMLButtonElement>('[data-action="refresh-calendar"]');
-  refreshButton?.addEventListener('click', () => {
-    void refreshCalendar();
-  });
 }
 
 function renderTodayWeather() {
@@ -429,14 +424,8 @@ function renderCalendarContent() {
     `;
   }
 
-  const header = `
-    <div class="calendar-head">
-      <button class="cal-btn" data-action="refresh-calendar">Refresh</button>
-    </div>
-  `;
-
   if (!state.calendar || state.calendar.events.length === 0) {
-    return `${header}<p class="cal-empty">No upcoming events</p>`;
+    return '<p class="cal-empty">No upcoming events</p>';
   }
 
   const groups = groupCalendarEvents(state.calendar.events)
@@ -459,8 +448,7 @@ function renderCalendarContent() {
       `
     )
     .join('');
-
-  return `${header}<div class="calendar-body">${groups}</div>`;
+  return `<div class="calendar-body">${groups}</div>`;
 }
 
 function toWeatherSnapshot(payload: OpenMeteoResponse): WeatherSnapshot {
@@ -498,7 +486,7 @@ function groupCalendarEvents(events: CalendarEvent[]): CalendarGroup[] {
   const grouped = new Map<string, CalendarEvent[]>();
 
   for (const event of events) {
-    const key = new Date(event.startDate).toDateString();
+    const key = getDateKey(event.startDate);
     const existing = grouped.get(key);
     if (existing) {
       existing.push(event);
@@ -532,6 +520,7 @@ function writeSnapshot<T>(key: string, snapshot: T) {
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
     weekday: 'long',
     month: 'long',
     day: 'numeric'
@@ -540,6 +529,7 @@ function formatDate(date: Date) {
 
 function formatClock(date: Date) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
@@ -548,6 +538,7 @@ function formatClock(date: Date) {
 
 function formatShortTime(value: string) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
@@ -556,30 +547,50 @@ function formatShortTime(value: string) {
 
 function formatHour(value: string) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
     hour: '2-digit',
     hour12: false
   }).format(new Date(value));
 }
 
 function formatCalendarGroupLabel(value: string) {
-  const date = new Date(value);
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
 
-  if (date.toDateString() === today.toDateString()) {
+  if (value === getDateKey(today)) {
     return 'Today';
   }
 
-  if (date.toDateString() === tomorrow.toDateString()) {
+  if (value === getDateKey(tomorrow)) {
     return 'Tomorrow';
   }
 
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timezone,
     weekday: 'long',
     month: 'long',
     day: 'numeric'
   }).format(date);
+}
+
+function getDateKey(value: Date | string) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: config.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+
+  return `${year}-${month}-${day}`;
 }
 
 function describeCalendarEvent(event: CalendarEvent) {

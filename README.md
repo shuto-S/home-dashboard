@@ -48,7 +48,7 @@ The frontend never stores Google access tokens. It calls the backend with `crede
 
    - `VITE_LATITUDE`: location latitude
    - `VITE_LONGITUDE`: location longitude
-   - `VITE_TIMEZONE`: e.g. `Asia/Tokyo`
+   - `VITE_TIMEZONE`: e.g. `Asia/Tokyo` . This controls the dashboard clock, date labels, and hourly weather times regardless of the device's local timezone.
    - `VITE_LOCATION_LABEL`: display label such as `Home`
    - `VITE_API_BASE`: backend base URL, e.g. `http://localhost:8080`
 
