@@ -68,6 +68,7 @@ The frontend never stores Google access tokens. It calls the backend with `crede
    - `CALENDAR_ID`: target Google Calendar ID
    - `ALLOWED_ORIGIN`: frontend origin allowed by CORS, e.g. `http://localhost:5173`
    - `FRONTEND_BASE_URL`: URL to redirect back to after successful login
+   - `KIOSK_KEY`: optional shared secret for read-only kiosk devices that should bypass browser-side Google login
    - `SESSION_SECRET`: long random string used to sign the session cookie
    - `DB_PATH`: optional SQLite file path override
 
@@ -81,7 +82,23 @@ Together:
 make dev
 \`\`\`
 
-`make dev` prints the frontend and backend URLs first, then starts both processes. The frontend is pinned to `http://localhost:5173` with Vite `--strictPort`, so startup fails instead of silently changing ports.
+`make dev` prints both local and LAN URLs, then starts both processes. The frontend is pinned to port `5173` with Vite `--strictPort`, so startup fails instead of silently changing ports.
+
+For Kindle Fire or other older browsers, prefer a production preview instead of the Vite dev server:
+
+```bash
+make device-preview
+```
+
+`make device-preview` builds the frontend with legacy browser support enabled and serves it on port `4173`.
+
+For the most reliable Kindle setup, serve the built frontend from the Go backend on the same origin:
+
+```bash
+make device-serve
+```
+
+That removes the separate frontend port entirely. The device only needs to open the backend URL on port `8080`.
 
 Separate terminals:
 
@@ -102,6 +119,18 @@ Default local URLs:
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8080`
 
+For Kindle or other devices on the same Wi-Fi, open the printed LAN frontend URL, for example:
+
+- `http://192.168.4.42:5173`
+
+If the device shows a blank page with the dev server, use the preview URL instead:
+
+- `http://192.168.4.42:4173`
+
+If the device reports resource-load errors such as `Error Code: -102`, use the single-origin backend URL instead:
+
+- `http://192.168.4.42:8080`
+
 ## Google Calendar configuration
 
 Create a Google OAuth client and register the backend callback URL as an authorized redirect URI.
@@ -117,6 +146,22 @@ Production example:
 The backend requests `https://www.googleapis.com/auth/calendar.readonly` and stores the returned refresh token in SQLite. That allows the dashboard to keep reconnecting to Calendar without repeating the full browser-side token flow.
 
 To find the calendar ID, open the target Google Calendar, go to **Settings and sharing**, and copy the **Calendar ID**. Family calendars usually look like `xxxx@group.calendar.google.com`.
+
+## Kindle / kiosk mode
+
+If Google login inside the device browser is unreliable, use the dashboard in kiosk mode.
+
+1. On a normal browser, authenticate once through `Connect Google Calendar` so the backend stores the refresh token.
+2. Set `KIOSK_KEY` in `backend/.env` to a long random value and restart the backend.
+3. Open the dashboard on the kiosk device with a URL like:
+
+   \`\`\`text
+   http://192.168.4.42:8080/?kiosk=your-shared-secret
+   \`\`\`
+
+4. The frontend stores that key locally and starts calling the backend with a read-only kiosk header.
+
+In kiosk mode the device never goes through the Google OAuth browser flow. It only reads calendar data that the backend can already access.
 
 ## Build
 

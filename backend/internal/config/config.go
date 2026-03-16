@@ -10,20 +10,22 @@ import (
 )
 
 type Config struct {
-	Port                string
-	DBPath              string
-	AllowedOrigin       string
-	FrontendBaseURL     string
-	SessionCookieName   string
-	SessionSecret       string
-	SessionTTL          time.Duration
-	CookieSecure        bool
-	CookieSameSite      string
-	GoogleClientID      string
-	GoogleClientSecret  string
-	GoogleRedirectURI   string
-	CalendarID          string
-	AppTimeZone         string
+	Port               string
+	DBPath             string
+	FrontendDistPath   string
+	AllowedOrigin      string
+	FrontendBaseURL    string
+	KioskKey           string
+	SessionCookieName  string
+	SessionSecret      string
+	SessionTTL         time.Duration
+	CookieSecure       bool
+	CookieSameSite     string
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleRedirectURI  string
+	CalendarID         string
+	AppTimeZone        string
 }
 
 func Load() *Config {
@@ -34,8 +36,10 @@ func Load() *Config {
 	return &Config{
 		Port:               getEnv("PORT", "8080"),
 		DBPath:             getEnv("DB_PATH", filepath.Join("data", "dashboard.db")),
+		FrontendDistPath:   getEnv("FRONTEND_DIST_PATH", filepath.Join("..", "frontend", "dist")),
 		AllowedOrigin:      allowedOrigin,
 		FrontendBaseURL:    frontendBaseURL,
+		KioskKey:           getEnv("KIOSK_KEY", ""),
 		SessionCookieName:  getEnv("SESSION_COOKIE_NAME", "home_dashboard_session"),
 		SessionSecret:      getEnv("SESSION_SECRET", "change-me-in-production"),
 		SessionTTL:         time.Duration(sessionTTLHours) * time.Hour,
@@ -62,6 +66,25 @@ func (c *Config) SameSite() http.SameSite {
 	default:
 		return http.SameSiteLaxMode
 	}
+}
+
+func (c *Config) AllowedOrigins() []string {
+	parts := strings.Split(c.AllowedOrigin, ",")
+	origins := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		origin := strings.TrimSpace(part)
+		if origin == "" {
+			continue
+		}
+		origins = append(origins, origin)
+	}
+
+	if len(origins) == 0 {
+		return []string{"http://localhost:5173"}
+	}
+
+	return origins
 }
 
 func (c *Config) Location() *time.Location {

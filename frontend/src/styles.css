@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&display=swap');
-
 :root {
   color-scheme: light;
   font-family: system-ui, -apple-system, 'Helvetica Neue', 'Hiragino Sans', sans-serif;
@@ -37,7 +35,7 @@ button { font: inherit; cursor: pointer; }
 }
 
 .date {
-  font-family: 'Space Mono', monospace;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
   font-size: clamp(1.4rem, 3.5vw, 1.9rem);
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -47,7 +45,7 @@ button { font: inherit; cursor: pointer; }
 }
 
 .clock {
-  font-family: 'Space Mono', monospace;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
   font-size: clamp(3.6rem, 10vw, 6.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;

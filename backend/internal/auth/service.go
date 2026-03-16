@@ -18,11 +18,13 @@ import (
 
 	"home-dashboard/backend/internal/config"
 	"home-dashboard/backend/internal/store"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
 const oauthStateCookieName = "home_dashboard_oauth_state"
+const kioskHeaderName = "X-Home-Dashboard-Kiosk-Key"
 
 type Service struct {
 	config      *config.Config
@@ -168,6 +170,27 @@ func (s *Service) IsAuthenticated(r *http.Request) bool {
 	return s.isValidAuthCookie(cookie.Value)
 }
 
+func (s *Service) HasKioskAccess(r *http.Request) bool {
+	if s.config.KioskKey == "" {
+		return false
+	}
+
+	providedKey := strings.TrimSpace(r.Header.Get(kioskHeaderName))
+	if providedKey == "" {
+		providedKey = strings.TrimSpace(r.URL.Query().Get("kiosk"))
+	}
+
+	if providedKey == "" {
+		return false
+	}
+
+	return hmac.Equal([]byte(providedKey), []byte(s.config.KioskKey))
+}
+
+func (s *Service) IsAuthorizedRequest(r *http.Request) bool {
+	return s.IsAuthenticated(r) || s.HasKioskAccess(r)
+}
+
 func (s *Service) status(ctx context.Context, r *http.Request) (StatusResponse, int) {
 	if !s.config.GoogleConfigured() {
 		return StatusResponse{
@@ -194,7 +217,7 @@ func (s *Service) status(ctx context.Context, r *http.Request) (StatusResponse, 
 		}, http.StatusOK
 	}
 
-	if !s.IsAuthenticated(r) {
+	if !s.IsAuthorizedRequest(r) {
 		return StatusResponse{
 			Configured:    true,
 			Authenticated: false,

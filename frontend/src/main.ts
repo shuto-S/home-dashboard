@@ -76,6 +76,7 @@ type DashboardState = {
 
 const WEATHER_STORAGE_KEY = 'home-dashboard.weather';
 const CALENDAR_STORAGE_KEY = 'home-dashboard.calendar';
+const KIOSK_KEY_STORAGE_KEY = 'home-dashboard.kiosk-key';
 const WEATHER_POLL_MS = 15 * 60 * 1000;
 const CALENDAR_POLL_MS = 10 * 60 * 1000;
 
@@ -84,7 +85,7 @@ const config = {
   longitude: parseFloat(import.meta.env.VITE_LONGITUDE ?? '139.6500'),
   timezone: import.meta.env.VITE_TIMEZONE ?? 'Asia/Tokyo',
   locationLabel: import.meta.env.VITE_LOCATION_LABEL ?? 'Home',
-  apiBase: normalizeBaseUrl(import.meta.env.VITE_API_BASE ?? 'http://localhost:8080')
+  apiBase: resolveApiBase(import.meta.env.VITE_API_BASE)
 };
 
 const weatherCodeLabelMap: Record<WeatherCode, string> = {
@@ -142,6 +143,7 @@ if (!appRoot) {
 }
 
 const app = appRoot;
+const kioskKey = resolveKioskKey();
 
 const state: DashboardState = {
   weather: readSnapshot<WeatherSnapshot>(WEATHER_STORAGE_KEY),
@@ -212,9 +214,7 @@ async function setupCalendar() {
 
 async function refreshCalendarAuthStatus() {
   try {
-    const response = await fetch(buildApiUrl('/api/auth/status'), {
-      credentials: 'include'
-    });
+    const response = await fetch(buildApiUrl('/api/auth/status'), buildCalendarRequestInit());
 
     if (!response.ok) {
       throw new Error(`calendar-status:${response.status}`);
@@ -275,9 +275,7 @@ async function refreshCalendar() {
   state.calendarStatus = 'Updating events';
 
   try {
-    const response = await fetch(buildApiUrl('/api/calendar/events'), {
-      credentials: 'include'
-    });
+    const response = await fetch(buildApiUrl('/api/calendar/events'), buildCalendarRequestInit());
 
     if (response.status === 401) {
       state.isCalendarAuthorized = false;
@@ -419,6 +417,10 @@ function renderCalendarContent() {
   }
 
   if (!state.isCalendarAuthorized) {
+    if (isKioskMode()) {
+      return `<p class="cal-empty">${escapeHtml(state.calendarStatus)}</p>`;
+    }
+
     return `
       <div class="calendar-head">
         <button class="cal-btn" data-action="connect-calendar">Connect Google Calendar</button>
@@ -608,8 +610,55 @@ function normalizeBaseUrl(value: string) {
   return value.replace(/\/$/, '');
 }
 
+function resolveApiBase(value: string | undefined) {
+  const configuredValue = value?.trim();
+  if (!configuredValue || configuredValue === 'auto') {
+    return `${window.location.protocol}//${window.location.hostname}:8080`;
+  }
+
+  return normalizeBaseUrl(configuredValue);
+}
+
 function buildApiUrl(path: string) {
   return `${config.apiBase}${path}`;
+}
+
+function buildCalendarRequestInit(): RequestInit {
+  const headers = new Headers();
+
+  if (kioskKey) {
+    headers.set('X-Home-Dashboard-Kiosk-Key', kioskKey);
+  }
+
+  return {
+    credentials: 'include',
+    headers
+  };
+}
+
+function isKioskMode() {
+  return Boolean(kioskKey);
+}
+
+function resolveKioskKey() {
+  const currentUrl = new URL(window.location.href);
+  const kioskParam = currentUrl.searchParams.get('kiosk');
+
+  if (kioskParam === 'clear') {
+    window.localStorage.removeItem(KIOSK_KEY_STORAGE_KEY);
+    currentUrl.searchParams.delete('kiosk');
+    window.history.replaceState({}, document.title, currentUrl.toString());
+    return null;
+  }
+
+  if (kioskParam) {
+    window.localStorage.setItem(KIOSK_KEY_STORAGE_KEY, kioskParam);
+    currentUrl.searchParams.delete('kiosk');
+    window.history.replaceState({}, document.title, currentUrl.toString());
+    return kioskParam;
+  }
+
+  return window.localStorage.getItem(KIOSK_KEY_STORAGE_KEY);
 }
 
 function escapeHtml(value: string) {

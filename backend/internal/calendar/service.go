@@ -66,7 +66,7 @@ func (s *Service) HandleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.auth.IsAuthenticated(r) {
+	if !s.auth.IsAuthorizedRequest(r) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"message": "Reconnect Google Calendar"})
 		return
 	}
