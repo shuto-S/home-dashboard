@@ -508,7 +508,6 @@ function renderCalendarContent() {
                 <div class="cal-event${event.isAllDay ? ' cal-event--allday' : ''}">
                   <span class="cal-event-time">${event.isAllDay ? 'All Day' : `${event.startLabel} - ${event.endLabel}`}</span>
                   <span class="cal-event-summary">${escapeHtml(event.summary)}</span>
-                  <span class="cal-event-badge">${describeCalendarEvent(event)}</span>
                 </div>
               `
             )
@@ -686,22 +685,6 @@ function getDateKey(value: Date | string) {
   const day = parts.find((part) => part.type === 'day')?.value;
 
   return `${year}-${month}-${day}`;
-}
-
-function describeCalendarEvent(event: CalendarEvent) {
-  if (event.isAllDay) {
-    return 'All Day';
-  }
-
-  const now = Date.now();
-  const start = new Date(event.startDate).getTime();
-  const end = new Date(event.endDate).getTime();
-
-  if (start <= now && now <= end) {
-    return 'Now';
-  }
-
-  return '';
 }
 
 function toWeatherCode(value: number): WeatherCode {
