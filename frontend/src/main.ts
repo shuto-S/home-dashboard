@@ -388,9 +388,8 @@ function renderTodayWeather() {
         <span class="weather-icon">${icon}</span>
         <span class="current-temp">${Math.round(state.weather.currentTemp)}°</span>
       </div>
-      <p class="weather-detail">${label} / ${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}°</p>
-      <p class="weather-precip">Rain ${Math.round(todayPrecipitation)}%</p>
-      <p class="weather-location">${escapeHtml(config.locationLabel)}</p>
+      <p class="weather-label">${label}</p>
+      <p class="weather-meta">${Math.round(state.weather.maxTemp)}° / ${Math.round(state.weather.minTemp)}° · Rain ${Math.round(todayPrecipitation)}%</p>
     </div>
   `;
 }
@@ -477,8 +476,7 @@ function renderCalendarGroupWeather(dateKey: string) {
   return `
     <span class="cal-group-weather" aria-hidden="true">
       <span class="cal-group-weather-icon">${weatherCodeSymbolMap[weatherCode]}</span>
-      <span class="cal-group-weather-temp">${Math.round(dailyWeather.maxTemp)}° / ${Math.round(dailyWeather.minTemp)}°</span>
-      <span class="cal-group-weather-precip">${Math.round(dailyWeather.precipitationProbabilityMax)}%</span>
+      <span class="cal-group-weather-detail">${Math.round(dailyWeather.maxTemp)}°/${Math.round(dailyWeather.minTemp)}° Rain ${Math.round(dailyWeather.precipitationProbabilityMax)}%</span>
     </span>
   `;
 }

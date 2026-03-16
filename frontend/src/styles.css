@@ -87,28 +87,20 @@ button { font: inherit; cursor: pointer; }
   line-height: 1;
 }
 
-.weather-detail {
-  margin-top: 10px;
-  font-size: 0.9rem;
+.weather-label {
+  margin-top: 8px;
+  font-size: 0.84rem;
   font-weight: 700;
-  color: #444;
-  letter-spacing: 0.02em;
+  color: #333;
+  letter-spacing: 0.03em;
 }
 
-.weather-precip {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  font-weight: 700;
+.weather-meta {
+  margin-top: 3px;
+  font-size: 0.76rem;
+  font-weight: 600;
   color: #555;
-  letter-spacing: 0.04em;
-}
-
-.weather-location {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #666;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .weather-loading {
@@ -244,19 +236,12 @@ button { font: inherit; cursor: pointer; }
   line-height: 1;
 }
 
-.cal-group-weather-temp {
-  font-size: 0.72rem;
+.cal-group-weather-detail {
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-}
-
-.cal-group-weather-precip {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  color: #555;
+  color: #444;
 }
 
 .cal-event {
@@ -325,9 +310,8 @@ button { font: inherit; cursor: pointer; }
   .date { font-size: clamp(1.25rem, 3.7vw, 1.7rem); }
   .clock { font-size: clamp(5rem, 15vw, 7rem); }
   .current-temp { font-size: clamp(2.6rem, 7vw, 3.4rem); font-weight: 700; }
-  .weather-detail { font-size: 0.84rem; }
-  .weather-precip { font-size: 0.72rem; }
-  .weather-location { font-size: 0.74rem; }
+  .weather-label { font-size: 0.78rem; }
+  .weather-meta { font-size: 0.68rem; }
 
   .hourly {
     margin: 0 -18px;
@@ -351,8 +335,7 @@ button { font: inherit; cursor: pointer; }
   .calendar { padding-top: 10px; }
   .cal-group-weather { gap: 6px; }
   .cal-group-weather-icon { font-size: 1.04rem; }
-  .cal-group-weather-temp { font-size: 0.64rem; }
-  .cal-group-weather-precip { font-size: 0.6rem; }
+  .cal-group-weather-detail { font-size: 0.6rem; }
 }
 
 @media (max-width: 480px) {
@@ -399,10 +382,9 @@ button { font: inherit; cursor: pointer; }
     font-size: 1.7rem;
   }
 
-  .weather-detail,
-  .weather-precip,
-  .weather-location {
-    font-size: 0.7rem;
+  .weather-label,
+  .weather-meta {
+    font-size: 0.66rem;
   }
 
   .calendar {
@@ -420,6 +402,5 @@ button { font: inherit; cursor: pointer; }
 
   .cal-group-weather { gap: 5px; }
   .cal-group-weather-icon { font-size: 0.96rem; }
-  .cal-group-weather-temp { font-size: 0.58rem; }
-  .cal-group-weather-precip { font-size: 0.54rem; }
+  .cal-group-weather-detail { font-size: 0.54rem; }
 }
